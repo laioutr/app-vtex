@@ -33,4 +33,11 @@ export default defineVtexLink({
 
     return { links };
   },
+  cache: {
+    strategy: 'ttl',
+    ttl: '5 minutes',
+    // Shorter than the tree links: this one moves with the search index, not with the tree.
+    buildCacheKey: ({ entityIds, pagination }) =>
+      `${[...entityIds].sort().join(',')}:${pagination.offset}:${pagination.limit}`,
+  },
 });

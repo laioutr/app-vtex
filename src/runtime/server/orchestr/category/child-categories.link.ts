@@ -23,4 +23,11 @@ export default defineVtexLink({
       }),
     };
   },
+  cache: {
+    strategy: 'ttl',
+    ttl: '10 minutes',
+    // The runner already prefixes a client-env key, so market, locale and currency are covered.
+    buildCacheKey: ({ entityIds, pagination }) =>
+      `${[...entityIds].sort().join(',')}:${pagination.offset}:${pagination.limit}`,
+  },
 });
