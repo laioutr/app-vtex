@@ -100,10 +100,13 @@ still unfixed upstream, as is the malformed indentation in its `package.json` (`
 
 ## Known-broken, deliberately not fixed
 
-`pnpm test:types` reports three errors inherited from the template. `test:types` is **not** part of
+`pnpm test:types` reports two errors inherited from the template. `test:types` is **not** part of
 CI, so they do not block anything, but they will greet anyone who runs it:
 
 - `src/globalExtensions.ts` TS2717 ×2 — the module augmentation collides with Nuxt's generated
   `.nuxt/types/schema.d.ts`, which declares the same key. Reproduces identically in `app-starter`.
-- `src/runtime/server/orchestr/plugins/zodFix.ts` — `defineNitroPlugin` is not exported from
-  `#imports` in the root tsconfig's context.
+
+A third inherited error — `defineNitroPlugin` unresolved in `zodFix.ts` — is gone. Server runtime
+code resolves `#imports` against `.nuxt/types/nitro-imports.d.ts`, which the root tsconfig does not
+use, so `src/runtime/server` is excluded there and checked through its own
+`src/runtime/server/tsconfig.json` instead. `test:types` runs both projects.

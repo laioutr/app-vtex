@@ -67,6 +67,13 @@ export default defineNuxtModule<ModuleOptions>({
       salesChannel,
     });
 
+    // Make app-assets publicly available, namespaced so they cannot collide with another app's.
+    nuxt.options.nitro.publicAssets ??= [];
+    nuxt.options.nitro.publicAssets.push({
+      dir: resolveRuntimeModule('./app/public'),
+      maxAge: 60 * 60 * 24 * 365,
+    });
+
     await registerLaioutrApp({
       name,
       version,
