@@ -20,7 +20,7 @@ See [laioutr.com](https://laioutr.com) for more information about Laioutr.
 <!-- Highlight some of the features your module provide here -->
 
 Scaffolding only so far — the Orchestr handlers, resolvers and client layer are not implemented
-yet. See [PLAN.md](./PLAN.md) for the intended scope.
+yet. See [the implementation plan](./docs/plans/2026-08-20-vtex-wrapper-plan.md) for the intended scope.
 
 ## Quick Setup
 
