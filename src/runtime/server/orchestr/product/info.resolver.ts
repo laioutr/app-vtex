@@ -25,4 +25,8 @@ export default defineVtexComponentResolver({
 
     return { entities };
   },
+  cache: {
+    // Catalog copy and media change on an editorial rhythm, not a transactional one.
+    ttl: '10 minutes',
+  },
 });

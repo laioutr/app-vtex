@@ -51,4 +51,9 @@ export default defineVtexComponentResolver({
 
     return { entities };
   },
+  cache: {
+    // Matches the category tree's own lifetime, so a cached component cannot outlive the tree it
+    // was derived from.
+    ttl: '10 minutes',
+  },
 });

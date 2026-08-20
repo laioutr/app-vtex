@@ -24,4 +24,9 @@ export default defineVtexComponentResolver({
 
     return { entities };
   },
+  cache: {
+    // Shorter than the catalog components: a price the shopper is quoted should not lag far behind
+    // the one checkout will charge.
+    ttl: '5 minutes',
+  },
 });

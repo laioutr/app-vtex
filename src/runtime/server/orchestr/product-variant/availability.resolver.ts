@@ -1,12 +1,14 @@
-import { ProductVariantPrices } from '@laioutr-core/canonical-types/entity/product-variant';
+import { ProductVariantAvailability } from '@laioutr-core/canonical-types/entity/product-variant';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { loadVariants } from '../../vtex-helper/loadVariants';
 import { toVariantComponents } from '../../vtex-helper/mappers/productVariant';
 
 export default defineVtexComponentResolver({
-  label: 'VTEX Product Variant Prices Connector',
+  label: 'VTEX Product Variant Availability Connector',
   entityType: 'ProductVariant',
-  provides: [ProductVariantPrices],
+  // Stock moves faster than anything else a variant carries, so it resolves on its own: sharing a
+  // resolver with the stable components would force them to be re-read at the pace of this one.
+  provides: [ProductVariantAvailability],
   resolve: async ({ entityIds, context, clientEnv, passthrough, $entity }) => {
     const variants = await loadVariants(context.vtexClient, passthrough, entityIds);
     const currency = clientEnv.market.currency;
@@ -15,18 +17,14 @@ export default defineVtexComponentResolver({
       const hit = variants.get(id);
       if (!hit) return [];
 
-      const { prices } = toVariantComponents(hit.item, currency);
-      // No seller means no price, and the component's price is required.
-      if (!prices) return [];
-
-      return [$entity({ id, prices: () => prices })];
+      const { availability } = toVariantComponents(hit.item, currency);
+      return [$entity({ id, availability: () => availability })];
     });
 
     return { entities };
   },
   cache: {
-    // Shorter than the catalog components: a price the shopper is quoted should not lag far behind
-    // the one checkout will charge.
-    ttl: '5 minutes',
+    // A minute bounds what this adds on top of the lag the search index already carries.
+    ttl: '1 minute',
   },
 });

@@ -1,5 +1,4 @@
 import {
-  ProductVariantAvailability,
   ProductVariantBase,
   ProductVariantInfo,
   ProductVariantOptions,
@@ -11,13 +10,9 @@ import { toVariantComponents } from '../../vtex-helper/mappers/productVariant';
 export default defineVtexComponentResolver({
   label: 'VTEX Product Variant Connector',
   entityType: 'ProductVariant',
-  // `prices` requires a price, which a SKU with no seller cannot supply, so it resolves separately.
-  provides: [
-    ProductVariantBase,
-    ProductVariantInfo,
-    ProductVariantOptions,
-    ProductVariantAvailability,
-  ],
+  // `prices` requires a price a SKU with no seller cannot supply, and `availability` changes far
+  // faster than any of these, so both resolve separately.
+  provides: [ProductVariantBase, ProductVariantInfo, ProductVariantOptions],
   resolve: async ({ entityIds, context, clientEnv, passthrough, $entity }) => {
     const variants = await loadVariants(context.vtexClient, passthrough, entityIds);
     const currency = clientEnv.market.currency;
@@ -34,11 +29,14 @@ export default defineVtexComponentResolver({
           base: () => mapped.base,
           info: () => mapped.info,
           options: () => mapped.options,
-          availability: () => mapped.availability,
         }),
       ];
     });
 
     return { entities };
+  },
+  cache: {
+    // Catalog copy and media change on an editorial rhythm, not a transactional one.
+    ttl: '10 minutes',
   },
 });
