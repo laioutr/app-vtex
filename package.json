@@ -45,6 +45,7 @@
   ],
   "dependencies": {
     "@nuxt/kit": "3.16.2",
+    "@screeny05/ts-money": "^1.2.0",
     "zod": "3.25.61"
   },
   "devDependencies": {
@@ -64,6 +65,7 @@
     "eslint": "^9.35.0",
     "nuxt": "3.16.2",
     "pinia": "3.0.2",
+    "tsx": "^4.23.12",
     "typescript": "5.9.2",
     "vitest": "3.1.1",
     "vue-tsc": "2.2.10"
