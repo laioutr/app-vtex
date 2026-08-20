@@ -1,10 +1,8 @@
 import type { SearchProvider } from './types';
 import type { VtexClient } from '../client/types';
+import type { VtexProduct } from '../vtex-helper/mappers/product';
 import type { AvailableFilter, WellKnownFilterName } from '@laioutr-core/orchestr/types';
 
-interface LegacyProduct {
-  productId: string;
-}
 interface LegacyFacetValue {
   Name: string;
   Quantity: number;
@@ -50,7 +48,7 @@ export const createLegacySearchProvider = (client: VtexClient): SearchProvider =
     // `fq=skuId:` silently returns nothing; category filtering uses the C: id-path form.
     if (categoryPath) params.append('fq', `C:${categoryPath}`);
 
-    const { data, headers } = await client.publicFetchRaw<LegacyProduct[]>(
+    const { data, headers } = await client.publicFetchRaw<VtexProduct[]>(
       'catalogSystem',
       `/api/catalog_system/pub/products/search?${params}`
     );
@@ -58,6 +56,7 @@ export const createLegacySearchProvider = (client: VtexClient): SearchProvider =
     return {
       productIds: data.map((p) => p.productId),
       total: totalFromResources(headers, data.length),
+      products: data,
     };
   },
 

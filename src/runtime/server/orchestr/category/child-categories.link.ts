@@ -26,8 +26,9 @@ export default defineVtexLink({
   cache: {
     strategy: 'ttl',
     ttl: '10 minutes',
-    // The runner already prefixes a client-env key, so market, locale and currency are covered.
-    buildCacheKey: ({ entityIds, pagination }) =>
-      `${[...entityIds].sort().join(',')}:${pagination.offset}:${pagination.limit}`,
+    // The runner's client-env prefix is locale, currency and preview only — the market is absent,
+    // and two markets sharing a language and currency can still resolve different sales channels.
+    buildCacheKey: ({ entityIds, pagination, clientEnv }) =>
+      `${clientEnv.market.slug}:${[...entityIds].sort().join(',')}:${pagination.offset}:${pagination.limit}`,
   },
 });

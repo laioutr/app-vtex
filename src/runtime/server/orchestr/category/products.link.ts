@@ -2,10 +2,11 @@ import { CategoryProductsLink } from '@laioutr-core/canonical-types/ecommerce';
 import { defineVtexLink } from '../../middleware/defineVtex';
 import { createLegacySearchProvider } from '../../search/legacy';
 import { categoryPathOf, loadCategoryTree } from '../../vtex-helper/categoryTree';
+import { seedProducts } from '../../vtex-helper/loadProducts';
 
 export default defineVtexLink({
   implements: CategoryProductsLink,
-  run: async ({ entityIds, context, pagination }) => {
+  run: async ({ entityIds, context, pagination, passthrough }) => {
     if (entityIds.length === 0) return { links: [] };
 
     const provider = createLegacySearchProvider(context.vtexClient);
@@ -19,13 +20,16 @@ export default defineVtexLink({
         // its products. One bad source yields nothing rather than failing the whole batch.
         if (!categoryPath) return { sourceId, targetIds: [], entityTotal: 0 };
 
-        const { productIds, total } = await provider.searchProducts({
+        const { productIds, total, products } = await provider.searchProducts({
           categoryPath,
           from: pagination.offset,
           // `_to` is inclusive, so the last index is one below the exclusive end.
           to: pagination.offset + pagination.limit - 1,
           salesChannel: context.vtexSalesChannel,
         });
+
+        // The search response already carries every field the resolvers need.
+        seedProducts(passthrough, products);
 
         return { sourceId, targetIds: productIds, entityTotal: total };
       })
@@ -37,7 +41,7 @@ export default defineVtexLink({
     strategy: 'ttl',
     ttl: '5 minutes',
     // Shorter than the tree links: this one moves with the search index, not with the tree.
-    buildCacheKey: ({ entityIds, pagination }) =>
-      `${[...entityIds].sort().join(',')}:${pagination.offset}:${pagination.limit}`,
+    buildCacheKey: ({ entityIds, pagination, clientEnv }) =>
+      `${clientEnv.market.slug}:${[...entityIds].sort().join(',')}:${pagination.offset}:${pagination.limit}`,
   },
 });

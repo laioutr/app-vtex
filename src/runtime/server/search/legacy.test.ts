@@ -14,16 +14,15 @@ describe('createLegacySearchProvider', () => {
     const provider = createLegacySearchProvider(client(raw));
     await expect(
       provider.searchProducts({ from: 0, to: 1, salesChannel: '1', term: 'sneaker' })
-    ).resolves.toEqual({ productIds: ['1', '2'], total: 42 });
+    ).resolves.toMatchObject({ productIds: ['1', '2'], total: 42 });
   });
 
   it('falls back to the result count when the header is missing', async () => {
     const raw = vi.fn().mockResolvedValue({ data: [{ productId: '1' }], headers: new Headers() });
     const provider = createLegacySearchProvider(client(raw));
-    await expect(provider.searchProducts({ from: 0, to: 9, salesChannel: '1' })).resolves.toEqual({
-      productIds: ['1'],
-      total: 1,
-    });
+    await expect(
+      provider.searchProducts({ from: 0, to: 9, salesChannel: '1' })
+    ).resolves.toMatchObject({ productIds: ['1'], total: 1 });
   });
 
   it('searches by full text with ft', async () => {
@@ -81,6 +80,19 @@ describe('createLegacySearchProvider', () => {
 
   it('has no suggestions capability', () => {
     expect(createLegacySearchProvider(client(vi.fn())).suggestions).toBeUndefined();
+  });
+});
+
+describe('searchProducts passthrough', () => {
+  it('hands back the documents it downloaded, so nothing refetches them', async () => {
+    const documents = [{ productId: '1', productName: 'One' }];
+    const raw = withResources(documents, 'items 0-0/1');
+    const result = await createLegacySearchProvider(client(raw)).searchProducts({
+      from: 0,
+      to: 9,
+      salesChannel: '1',
+    });
+    expect(result.products).toEqual(documents);
   });
 });
 

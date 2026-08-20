@@ -1,3 +1,4 @@
+import type { VtexProduct } from '../vtex-helper/mappers/product';
 import type { AvailableFilter } from '@laioutr-core/orchestr/types';
 
 export interface SearchProductsInput {
@@ -16,8 +17,13 @@ export interface SuggestionResult {
 export interface SearchProvider {
   readonly id: 'legacy' | 'intelligent';
 
-  /** Returns ids and a total; hydration belongs to the resolver. */
-  searchProducts(input: SearchProductsInput): Promise<{ productIds: string[]; total: number }>;
+  /**
+   * Returns the ids and a total, and hands back the documents the search already downloaded — the
+   * response carries every field a resolver needs, so discarding it means fetching it twice.
+   */
+  searchProducts(
+    input: SearchProductsInput
+  ): Promise<{ productIds: string[]; total: number; products: VtexProduct[] }>;
 
   facets(input: {
     term?: string;

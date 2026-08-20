@@ -1,3 +1,4 @@
+import { searchByIds } from './searchByIds';
 import type { VtexClient } from '../client/types';
 import type { VtexItem, VtexProduct } from './mappers/product';
 import type { ComponentResolverArguments } from '@laioutr-core/orchestr/types';
@@ -27,15 +28,7 @@ export const loadVariants = async (
   const missing = skuIds.filter((id) => !found.has(id));
   if (missing.length === 0) return found;
 
-  const params = new URLSearchParams([
-    ...missing.map((id) => ['fq', `skuId:${id}`] as [string, string]),
-    ['sc', client.salesChannel],
-  ]);
-
-  const fetched = await client.publicFetch<VtexProduct[]>(
-    'catalogSystem',
-    `/api/catalog_system/pub/products/search?${params}`
-  );
+  const fetched = await searchByIds(client, 'skuId', missing);
 
   const all = [...known, ...fetched.filter((p) => !known.some((k) => k.productId === p.productId))];
   passthrough.set(loadedProductsToken, all);

@@ -8,11 +8,3 @@ import type { VtexProduct } from '../vtex-helper/mappers/product';
 export const loadedProductsToken = createPassthroughToken<VtexProduct[]>(
   '@laioutr/app-vtex/loadedProducts'
 );
-
-/**
- * The category ids making up the menu currently being resolved. A menu is a subtree, so an item's
- * parent in the full category tree is not necessarily part of the menu — without this the items
- * at the top of a subtree menu would each report a parent the frontend never received, leaving it
- * unable to tell which items start the menu.
- */
-export const menuItemIdsToken = createPassthroughToken<string[]>('@laioutr/app-vtex/menuItemIds');

@@ -24,6 +24,9 @@ export default defineVtexComponentResolver({
     return { entities };
   },
   cache: {
+    // The runner's client-env prefix carries no market, so two markets sharing a language and
+    // currency would otherwise share entries despite resolving different sales channels.
+    getKeySuffix: (clientEnv) => clientEnv.market.slug,
     // A minute bounds what this adds on top of the lag the search index already carries.
     ttl: '1 minute',
   },

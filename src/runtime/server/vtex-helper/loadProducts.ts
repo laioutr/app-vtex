@@ -1,3 +1,4 @@
+import { searchByIds } from './searchByIds';
 import type { VtexClient } from '../client/types';
 import type { VtexProduct } from './mappers/product';
 import type { ComponentResolverArguments } from '@laioutr-core/orchestr/types';
@@ -5,6 +6,19 @@ import { loadedProductsToken } from '../const/passthroughTokens';
 
 /** The store type is reachable only through the handler arguments that carry it. */
 type PassthroughStore = ComponentResolverArguments['passthrough'];
+
+/**
+ * Adds products a query or link already fetched to the request's store, so the resolvers that run
+ * afterwards read them instead of asking VTEX for documents it just sent.
+ */
+export const seedProducts = (passthrough: PassthroughStore, products: VtexProduct[]) => {
+  if (products.length === 0) return;
+
+  const known = passthrough.get(loadedProductsToken) ?? [];
+  const fresh = products.filter((p) => !known.some((k) => k.productId === p.productId));
+
+  if (fresh.length > 0) passthrough.set(loadedProductsToken, [...known, ...fresh]);
+};
 
 /**
  * Fetches only the products not already in the request's store and folds the result back in, so
@@ -20,18 +34,8 @@ export const loadProducts = async (
 
   if (missing.length === 0) return known;
 
-  const params = new URLSearchParams([
-    // `fq=skuId:` does not filter; productId is the one that does.
-    ...missing.map((id) => ['fq', `productId:${id}`] as [string, string]),
-    ['sc', client.salesChannel],
-    ['_from', '0'],
-    ['_to', String(Math.max(missing.length - 1, 0))],
-  ]);
-
-  const fetched = await client.publicFetch<VtexProduct[]>(
-    'catalogSystem',
-    `/api/catalog_system/pub/products/search?${params}`
-  );
+  // `fq=skuId:` does not filter; productId is the one that does.
+  const fetched = await searchByIds(client, 'productId', missing);
 
   const all = [...known, ...fetched];
   passthrough.set(loadedProductsToken, all);
