@@ -1,23 +1,38 @@
 import { BreadcrumbItemBase } from '@laioutr-core/canonical-types/entity/breadcrumb-item';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
-import { categoryIdFromBreadcrumbId } from '../../vtex-helper/breadcrumbItems';
+import {
+  categoryIdFromBreadcrumbId,
+  productIdFromBreadcrumbId,
+} from '../../vtex-helper/breadcrumbItems';
 import { findById, loadCategoryTree, slugFromUrl } from '../../vtex-helper/categoryTree';
+import { loadProducts } from '../../vtex-helper/loadProducts';
 
 export default defineVtexComponentResolver({
   label: 'VTEX Breadcrumb Connector',
   entityType: 'BreadcrumbItem',
   provides: [BreadcrumbItemBase],
-  resolve: async ({ entityIds, context, $entity }) => {
-    const categoryIds = entityIds
+  resolve: async ({ entityIds, context, passthrough, $entity }) => {
+    const categoryCrumbs = entityIds
       .map((id) => ({ id, categoryId: categoryIdFromBreadcrumbId(id) }))
       .filter((e): e is { id: string; categoryId: number } => e.categoryId !== undefined);
 
-    // Ids from another breadcrumb source resolve nothing here, so the tree stays unfetched.
-    if (categoryIds.length === 0) return { entities: [] };
+    const productCrumbs = entityIds
+      .map((id) => ({ id, productId: productIdFromBreadcrumbId(id) }))
+      .filter((e): e is { id: string; productId: string } => e.productId !== undefined);
 
-    const tree = await loadCategoryTree(context.vtexClient);
+    // Each source is fetched only when this request actually asks for one of its crumbs.
+    const [tree, products] = await Promise.all([
+      categoryCrumbs.length ? loadCategoryTree(context.vtexClient) : [],
+      productCrumbs.length
+        ? loadProducts(
+            context.vtexClient,
+            passthrough,
+            productCrumbs.map((c) => c.productId)
+          )
+        : [],
+    ]);
 
-    const entities = categoryIds.flatMap(({ id, categoryId }) => {
+    const categoryEntities = categoryCrumbs.flatMap(({ id, categoryId }) => {
       const node = findById(tree, categoryId);
       if (!node) return [];
 
@@ -40,6 +55,30 @@ export default defineVtexComponentResolver({
       ];
     });
 
-    return { entities };
+    const productEntities = productCrumbs.flatMap(({ id, productId }) => {
+      const product = products.find((p) => p.productId === productId);
+      if (!product) return [];
+
+      return [
+        $entity({
+          id,
+          base: () => ({
+            name: product.productName,
+            link: {
+              type: 'reference' as const,
+              reference: {
+                type: 'Product' as const,
+                slug: product.linkText,
+                id: product.productId,
+              },
+            },
+            // The product ends its own breadcrumb, so this crumb is always the page being viewed.
+            isCurrentPage: true,
+          }),
+        }),
+      ];
+    });
+
+    return { entities: [...categoryEntities, ...productEntities] };
   },
 });

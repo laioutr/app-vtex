@@ -32,6 +32,10 @@ export interface VtexProduct {
   brand?: string | null;
   brandId?: number | null;
   categoryId?: string | null;
+  /** Category display-name paths, deepest first: `['/Damen/Schuhe/', …]`. */
+  categories?: string[];
+  /** The same trail as ids, deepest first: `['/1/2/3/4/', '/1/2/3/', …]`. */
+  categoriesIds?: string[];
   items: VtexItem[];
   /** Specification groups arrive as extra top-level keys naming an array of values. */
   allSpecifications?: string[] | null;
