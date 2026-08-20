@@ -14,8 +14,13 @@ export default defineVtexLink({
     // One search per source: the legacy endpoint filters on a single category path.
     const links = await Promise.all(
       entityIds.map(async (sourceId) => {
+        const categoryPath = categoryPathOf(tree, Number(sourceId));
+        // An unknown category would otherwise search unfiltered and report the whole catalog as
+        // its products. One bad source yields nothing rather than failing the whole batch.
+        if (!categoryPath) return { sourceId, targetIds: [], entityTotal: 0 };
+
         const { productIds, total } = await provider.searchProducts({
-          categoryPath: categoryPathOf(tree, Number(sourceId)),
+          categoryPath,
           from: pagination.offset,
           // `_to` is inclusive, so the last index is one below the exclusive end.
           to: pagination.offset + pagination.limit - 1,

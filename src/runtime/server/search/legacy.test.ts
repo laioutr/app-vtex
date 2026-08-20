@@ -83,3 +83,16 @@ describe('createLegacySearchProvider', () => {
     expect(createLegacySearchProvider(client(vi.fn())).suggestions).toBeUndefined();
   });
 });
+
+describe('searchProducts guards', () => {
+  it('sends no category filter when none is given, rather than an empty one VTEX rejects', async () => {
+    const raw = vi.fn().mockResolvedValue({ data: [], headers: new Headers() });
+    await createLegacySearchProvider(client(raw)).searchProducts({
+      term: 'x',
+      from: 0,
+      to: 9,
+      salesChannel: '1',
+    });
+    expect(raw.mock.calls[0][1]).not.toContain('fq=C');
+  });
+});
