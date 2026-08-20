@@ -42,7 +42,16 @@ export interface ModuleOptions {
 }
 ```
 
-Base-URL: `https://{accountName}.{environment}.com.br`.
+**Es gibt nicht eine Base-URL.** Gegen das Partner-Konto verifiziert:
+
+| Host | APIs |
+|---|---|
+| `https://{accountName}.{environment}.com.br` | Catalog, Catalog System, Checkout, Logistics, VTEX ID, Portal/Pagetype, Reviews |
+| `https://api.vtex.com/{accountName}` | **Pricing** |
+
+Der Pricing-Call gegen die Account-Domain schlägt fehl, der Logistics-Call gegen
+`logistics.vtexcommercestable.com.br` liefert 401 — nur über die Account-Domain 200. Der Client
+löst den Host deshalb **pro API** auf, statt einen `baseUrl` zu verketten.
 
 **RuntimeConfig-Key ist der volle Paketname**, nicht `vtex`. `src/module.ts` setzt
 `configKey: name` aus der `package.json`, entsprechend lautet der Key
@@ -78,7 +87,8 @@ durchreicht. Kein Access-Key, kein OAuth.
   Für Storefront-Catalog, Intelligent Search, Checkout `/pub/*`, VTEX ID, Reviews-Read.
 - `adminFetch(path, init)` — setzt AppKey/AppToken. Für Catalog-Admin-Reads, Pricing, MasterData.
 
-Beide propagieren `Set-Cookie`.
+Beide propagieren `Set-Cookie` und beide nehmen die API-Kennung statt eines rohen Pfads
+entgegen, damit die Host-Auflösung aus Abschnitt 2 an genau einer Stelle liegt.
 
 ---
 
@@ -180,7 +190,7 @@ Vollständige Liste dessen, was implementiert wird. Links steht das Token aus
 ### 6.1 Product
 | Token | Datei | VTEX |
 |---|---|---|
-| `ProductBySlugQuery` | `product/bySlug.query.ts` | `GET /api/catalog_system/pub/products/search/{slug}/p` |
+| `ProductBySlugQuery` | `product/bySlug.query.ts` | `GET /api/catalog_system/pub/products/search/{slug}/p` — Slug ist `linkText`, siehe unten |
 | `ProductsByCategoryIdQuery` | `product/byCategoryId.query.ts` | Intelligent Search `product_search` mit `selectedFacets=category-N` |
 | `ProductsByCategorySlugQuery` | `product/byCategorySlug.query.ts` | dito, Slug→ID über den Category-Tree |
 | `ProductSearchQuery` | `product/search.query.ts` | `GET /api/io/_v/api/intelligent-search/product_search/{query}` |
@@ -188,6 +198,16 @@ Vollständige Liste dessen, was implementiert wird. Links steht das Token aus
 | `ProductBreadcrumbLink` | `product/breadcrumb.link.ts` | Category-Tree-Traversal |
 | `ProductAllCategoriesLink` | `product/all-categories.link.ts` | `categoriesIds` der Product-Response |
 | `ProductReviewsLink` | `product/reviews.link.ts` | `GET /reviews-and-ratings/api/reviews?product_id={id}` |
+
+Zwei am Live-Konto verifizierte Fallstricke:
+
+- **Der Slug ist `linkText`, nicht `LinkId`.** Für dasselbe Produkt lautet `LinkId`
+  `Slip-On-Sneaker`, der auflösbare Slug aber `slip-on-sneaker`. Die Suche ist an dieser Stelle
+  case-sensitiv: die `LinkId`-Schreibweise liefert ein leeres Ergebnis, kein 404.
+- **`fq=skuId:` filtert nicht.** `fq=productId:{id}` liefert das Produkt, `fq=skuId:{id}` liefert
+  leer. Ein Aufruf ganz ohne `fq` liefert ebenfalls leer — die Suche braucht ein Filter- oder
+  Kategorie-Kriterium und taugt nicht als Katalog-Dump. Für Vollständigkeit ist
+  `GetProductAndSkuIds` `[adminFetch]` der richtige Weg, und genau den nutzt der Page-Index.
 
 Resolver `product/base.resolver.ts` liefert: `ProductBase`, `ProductInfo`, `ProductDescription`,
 `ProductMedia`, `ProductPrices`, `ProductSeo`, `ProductFlags`, `ProductRating`,
@@ -340,9 +360,10 @@ VTEX ist hier **nicht einheitlich**. Gegen die offiziellen OpenAPI-Schemas gepr�
 
 | API | Darstellung | Beleg |
 |---|---|---|
-| Checkout (OrderForm) | **Integer, Minor Units** | 29 von 30 Geldfeldern `type: integer`; Beispiele `price: 1099`, `value: 100`, `referenceValue: 16175`, `tax: 0` |
-| Legacy Search (`catalog_system`) | **Dezimal** | `commertialOffer.Price`/`ListPrice`/`Tax` sind `type: number`, Beispiel `PriceWithoutDiscount: 42.0` |
+| Checkout (OrderForm) | **Integer, Minor Units** | 29 von 30 Geldfeldern `type: integer`; am Live-Konto `value: 0` als Int, Währung `EUR` |
+| Legacy Search (`catalog_system`) | **Dezimal** | am Live-Konto: `Price`, `ListPrice`, `PriceWithoutDiscount` je `49.99` als Float, `Tax` `0.0`, `AvailableQuantity` `100` als Int |
 | Intelligent Search | **Dezimal** | `sellers[].commertialOffer.Price`/`ListPrice`/`spotPrice` sind `type: number` |
+| Pricing (`api.vtex.com`) | **Dezimal** | am Live-Konto: `basePrice`/`costPrice` je `49.99` |
 
 Die Doku bestätigt die Checkout-Seite wörtlich: *„Any properties representing monetary values will
 have cents as their units. (e.g. `10390` means R$103,90 in Brazilian stores.)"*
