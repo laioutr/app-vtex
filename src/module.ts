@@ -10,12 +10,12 @@ import { name, version } from '../package.json';
 export interface ModuleOptions {}
 
 /**
- * The config the module adds to nuxt.runtimeConfig.public['my-laioutr-app']
+ * The config the module adds to nuxt.runtimeConfig.public['@laioutr/app-vtex']
  */
 export interface RuntimeConfigModulePublic {}
 
 /**
- * The config the module adds to nuxt.runtimeConfig['my-laioutr-app']
+ * The config the module adds to nuxt.runtimeConfig['@laioutr/app-vtex']
  */
 export interface RuntimeConfigModulePrivate extends ModuleOptions {}
 

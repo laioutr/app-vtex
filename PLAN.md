@@ -1,4 +1,4 @@
-# Plan: `@laioutr-app/vtex` — Nuxt 3 / Laioutr Orchestr Wrapper für die VTEX API
+# Plan: `@laioutr/app-vtex` — Nuxt 3 / Laioutr Orchestr Wrapper für die VTEX API
 
 ## Context
 
@@ -20,7 +20,7 @@ Aus `app-starter` bereits vorhanden:
 - `src/runtime/server/orchestr/plugins/zodFix.ts` (Nitro Plugin)
 - `build.config.ts`, `playground/`, `test/`, `globalExtensions.ts`, `tsconfig.json`, `README.md`
 
-Placeholder `my-laioutr-app` → `@laioutr-app/vtex` in: `package.json`, `globalExtensions.ts` (2x), `src/module.ts` (2x), `playground/package.json`, `README.md` (9x).
+Placeholder `my-laioutr-app` → `@laioutr/app-vtex` in: `package.json`, `globalExtensions.ts` (2x), `src/module.ts` (2x), `playground/package.json`, `README.md` (9x).
 
 ---
 
@@ -356,7 +356,7 @@ Category-Resolver (`orchestr/catalog/category/base.resolver.ts`) mappt auf Laiou
 
 ## 6. Umsetzungs-Reihenfolge
 
-1. **Rename** `my-laioutr-app` → `@laioutr-app/vtex` (Package, RuntimeConfig, README, Playground).
+1. **Rename** `my-laioutr-app` → `@laioutr/app-vtex` (Package, RuntimeConfig, README, Playground).
 2. **ModuleOptions** + RuntimeConfig in `src/module.ts` + `globalExtensions.ts`.
 3. **Client-Schicht**: `cookies.ts`, `vtexClientFactory.ts` (`publicFetch` + `adminFetch` + Cookie-Passthrough), `types.ts`.
 4. **Orchestr-Middleware** `defineVtex.ts`.

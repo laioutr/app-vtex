@@ -1,10 +1,11 @@
 {
-  "name": "my-laioutr-app",
+  "name": "@laioutr/app-vtex",
   "version": "1.0.0",
-  "description": "My new Laioutr App",
-  "repository": "your-org/my-laioutr-app",
+  "description": "Laioutr integration with VTEX",
+  "repository": "github:laioutr/app-vtex",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@10.15.0",
   "exports": {
     ".": {
       "types": "./dist/types.d.mts",
@@ -21,14 +22,16 @@
   },
   "files": [
     "dist"
-  ],
-  "scripts": {
+],
+"scripts": {
     "dev": "npm run dev:prepare && nuxi dev playground",
     "dev:build": "nuxi build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
     "lint": "eslint .",
     "prepack": "nuxt-module-build build",
-    "release": "npm run lint && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm run prepack && changeset publish",
     "test": "vitest run",
     "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
     "test:watch": "vitest watch"
@@ -41,12 +44,12 @@
     "zod": "3.25.61"
   },
   "devDependencies": {
-    "@laioutr-app/ui": "^1.32.2",
-    "@laioutr-core/orchestr-devtools": "^1.7.0",
+    "@changesets/cli": "^2.31.0",
+    "@laioutr-app/ui": "^2.8.2",
+    "@laioutr-core/devtools": "^0.37.1",
     "@laioutr/eslint-config": "^1.8.8",
     "@laioutr/prettier-config": "^1.1.0",
     "@nuxt/devtools": "^2.6.3",
-    "@nuxt/devtools-ui-kit": "2.5.0",
     "@nuxt/module-builder": "1.0.1",
     "@nuxt/schema": "3.16.2",
     "@nuxt/test-utils": "3.19.1",
@@ -54,7 +57,6 @@
     "@pinia/colada-nuxt": "0.2.1",
     "@types/node": "latest",
     "@vueuse/core": "13.1.0",
-    "changelogen": "^0.6.2",
     "eslint": "^9.35.0",
     "nuxt": "3.16.2",
     "pinia": "3.0.2",
@@ -63,9 +65,9 @@
     "vue-tsc": "2.2.10"
   },
   "peerDependencies": {
-    "@laioutr-core/canonical-types": ">=0.22.13",
-    "@laioutr-core/core-types": ">=0.28.8",
-    "@laioutr-core/frontend-core": ">=0.28.8"
+    "@laioutr-core/canonical-types": ">=0.26.2",
+    "@laioutr-core/core-types": ">=0.37.1",
+    "@laioutr-core/frontend-core": ">=0.37.1"
   },
   "engines": {
     "node": ">=22.12.0",
