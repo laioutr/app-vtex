@@ -6,6 +6,9 @@
 Storefront anbindet. Referenz-Implementierung ist `app-shopware` (`@laioutr/app-shopware`), das
 denselben Core-Stand fährt.
 
+Kontospezifisches — Sandbox-Inhalt, verifizierte Hosts, API-Fallstricke, npm- und CI-Stand —
+steht in [`docs/environment.md`](../environment.md) und wird hier nicht wiederholt.
+
 Stand der Core-Pakete zum Zeitpunkt dieses Plans:
 `@laioutr-core/orchestr`, `kit`, `frontend-core`, `core-types` **0.42.0** · `canonical-types` **0.29.0**
 
@@ -38,9 +41,17 @@ export interface ModuleOptions {
   environment: 'vtexcommercestable' | 'myvtex';  // default 'vtexcommercestable'
   appKey: string;                                 // X-VTEX-API-AppKey
   appToken: string;                               // X-VTEX-API-AppToken
-  salesChannel?: string;                          // default '1'
+  salesChannel?: string;                          // Fallback, default '1'
+  salesChannelByMarket?: Record<string,string>;   // Market-Slug -> Sales-Channel-Id
+  searchProvider?: 'legacy' | 'intelligent';      // default 'legacy'
 }
 ```
+
+**Markt -> Sales Channel wird explizit gemappt**, nicht über die Währung erraten. `clientEnv.market`
+liefert `id`, `slug`, `name`, `currency` und Regionscodes; die Auflösung ist
+`salesChannelByMarket?.[market.slug] ?? salesChannel`. Ein Währungs-Match wäre bequemer, greift aber
+daneben, sobald zwei Trade Policies dieselbe Währung führen (B2B/B2C) — und er bräuchte einen
+`adminFetch` beim Start, weil Sales Channels nur auf dem privaten Pfad auflistbar sind.
 
 **Es gibt nicht eine Base-URL.** Gegen das Partner-Konto verifiziert:
 
@@ -87,8 +98,24 @@ durchreicht. Kein Access-Key, kein OAuth.
   Für Storefront-Catalog, Intelligent Search, Checkout `/pub/*`, VTEX ID, Reviews-Read.
 - `adminFetch(path, init)` — setzt AppKey/AppToken. Für Catalog-Admin-Reads, Pricing, MasterData.
 
-Beide propagieren `Set-Cookie` und beide nehmen die API-Kennung statt eines rohen Pfads
-entgegen, damit die Host-Auflösung aus Abschnitt 2 an genau einer Stelle liegt.
+Beide nehmen eine **API-Kennung statt eines rohen Pfads** entgegen
+(`publicFetch('catalogSystem', '/api/...')`), damit die Host-Auflösung aus Abschnitt 2 an genau
+einer Stelle liegt und nicht in jeden Handler sickert, der einen Preis anfasst.
+
+`publicFetch` reicht `Set-Cookie` via `setCookie(event, …)` zurück. **`adminFetch` leitet bewusst
+keine Kunden-Cookies weiter** — ein Server-zu-Server-Call soll keine Shopper-Identität tragen, sonst
+löst VTEX einen anderen Kontext auf als gemeint.
+
+Die Factory macht **keinen einzigen Netzwerk-Call**. Sie liest eingehende Cookies, leitet
+`isAuthenticated` aus deren Vorhandensein ab, löst den Sales Channel rein rechnerisch auf und baut
+die Fetcher als Closures. Das erzwingt der Builder-Vertrag aus Abschnitt 4.
+
+Fehler: der Client wirft einen typisierten `VtexApiError` mit Status, API-Kennung und geparstem
+Body. Das Mapping auf kanonische Fehler bleibt im Handler — ob ein 404 ein `ProductNotFoundError`
+oder ein `CategoryNotFoundError` ist, weiß nur der Aufrufer.
+
+**`JSON.stringify(clientEnv)` wirft.** `market`, `language` und `domain` sind zyklisch verkettet.
+Logging- und Fehler-Helfer müssen Felder einzeln herausgreifen, nie das ganze Objekt serialisieren.
 
 ---
 
@@ -155,11 +182,14 @@ src/runtime/server/
 ├── vtex-helper/                   # interne Bausteine, KEINE Handler
 │   ├── catalog/                   # Product/SKU-Komposition, Spec-Reads
 │   ├── categoryTree.ts            # Tree laden, Slug→ID, Breadcrumb-Traversal
-│   ├── search.ts                  # Intelligent Search + Facetten
 │   ├── orderForm.ts               # OrderForm-Lifecycle
 │   ├── masterdata.ts              # MasterData-Zugriff (CL, AD, wishlist)
 │   ├── money.ts                   # VTEX-Preis → Money
 │   └── mappers/
+├── search/
+│   ├── types.ts                   # SearchProvider-Interface
+│   ├── legacy.ts                  # Adapter auf catalog_system
+│   └── intelligent.ts             # Adapter auf VTEX IO, sobald der Store aktiv ist
 ├── middleware/
 │   └── defineVtex.ts
 ├── const/
@@ -180,6 +210,46 @@ src/runtime/server/
     └── suggested-search/
 ```
 
+### 5.1 Such-Provider-Abstraktion
+
+Suche, PLP und Facetten laufen nicht direkt gegen eine VTEX-API, sondern gegen ein Interface. Die
+Handler bleiben an ihre kanonischen Tokens gebunden; nur das, was darunter aufgerufen wird, variiert.
+
+```ts
+export interface SearchProvider {
+  readonly id: 'legacy' | 'intelligent';
+
+  /** Liefert IDs und Total. Die Hydration ist Sache des Resolvers. */
+  searchProducts(input: {
+    term?: string;
+    categoryPath?: string;        // '/2/3/' — legacy fq=C:, IS selectedFacets
+    from: number; to: number;
+    salesChannel: string;
+  }): Promise<{ productIds: string[]; total: number }>;
+
+  facets(input: {
+    term?: string; categoryId?: string; salesChannel: string;
+  }): Promise<AvailableFilter[]>;
+
+  /** Optional — Legacy Search hat kein Autocomplete. */
+  suggestions?(input: { term: string }): Promise<SuggestionResult>;
+}
+```
+
+Drei bewusste Entscheidungen:
+
+- **`suggestions` ist optional statt einer werfenden Methode.** Damit ist das Fehlen von
+  Autocomplete eine Typ-Eigenschaft: `SuggestedSearchSearchQuery` wird schlicht nicht registriert,
+  wenn der aktive Provider sie nicht hat, statt zur Laufzeit zu scheitern.
+- **Queries liefern IDs und Total, nie Produkte.** Das ist der schmalste Vertrag, auf den sich beide
+  Adapter einigen müssen, und deckt sich mit dem Orchestr-Query-Kontrakt.
+- **Die Provider-Wahl ist Konfiguration, kein Probe-Call.** `searchProvider` in den `ModuleOptions`,
+  Default `'legacy'`. Ein Capability-Probe wäre nur über einen absichtlich scheiternden Request
+  feststellbar — das ist schlechter als eine deklarierte Einstellung.
+
+Der Legacy-Adapter mappt `Departments`, `Brands`, `CategoriesTrees` und `PriceRanges` auf
+`AvailableFilter`, damit die Storefront die Form bekommt, die sie ohnehin konsumiert.
+
 ---
 
 ## 6. Kanonische Bindungen
@@ -191,9 +261,9 @@ Vollständige Liste dessen, was implementiert wird. Links steht das Token aus
 | Token | Datei | VTEX |
 |---|---|---|
 | `ProductBySlugQuery` | `product/bySlug.query.ts` | `GET /api/catalog_system/pub/products/search/{slug}/p` — Slug ist `linkText`, siehe unten |
-| `ProductsByCategoryIdQuery` | `product/byCategoryId.query.ts` | Intelligent Search `product_search` mit `selectedFacets=category-N` |
+| `ProductsByCategoryIdQuery` | `product/byCategoryId.query.ts` | Such-Provider (5.1); Legacy: `products/search?fq=C:/{pfad}/` |
 | `ProductsByCategorySlugQuery` | `product/byCategorySlug.query.ts` | dito, Slug→ID über den Category-Tree |
-| `ProductSearchQuery` | `product/search.query.ts` | `GET /api/io/_v/api/intelligent-search/product_search/{query}` |
+| `ProductSearchQuery` | `product/search.query.ts` | Such-Provider (5.1); Legacy: `products/search?ft={term}` |
 | `ProductVariantsLink` | `product/variants.link.ts` | SKUs aus der Product-Response |
 | `ProductBreadcrumbLink` | `product/breadcrumb.link.ts` | Category-Tree-Traversal |
 | `ProductAllCategoriesLink` | `product/all-categories.link.ts` | `categoriesIds` der Product-Response |
@@ -210,8 +280,12 @@ Zwei am Live-Konto verifizierte Fallstricke:
   `GetProductAndSkuIds` `[adminFetch]` der richtige Weg, und genau den nutzt der Page-Index.
 
 Resolver `product/base.resolver.ts` liefert: `ProductBase`, `ProductInfo`, `ProductDescription`,
-`ProductMedia`, `ProductPrices`, `ProductSeo`, `ProductFlags`, `ProductRating`,
-`ProductDefaultVariant`, `ProductBrand`, `ProductSpecifications`, `ProductOptionGroups`.
+`ProductMedia`, `ProductPrices`, `ProductSeo`, `ProductFlags`, `ProductDefaultVariant`,
+`ProductBrand`, `ProductSpecifications`, `ProductOptionGroups`.
+
+`ProductRating` ist **bewusst noch nicht dabei**: es stammt aus
+`/reviews-and-ratings/api/rating/{productId}` und kommt mit der Review-Arbeit. Eine Komponente zu
+deklarieren, die man nicht auflösen kann, scheitert zur Request-Zeit statt bei der Registrierung.
 
 `ProductBrand` und `ProductSpecifications` sind der kanonische Platz für VTEX-Brand- und
 Specification-Daten — die gehören nicht in eigene Queries.
@@ -229,7 +303,7 @@ Optional je nach VTEX-Daten: `ProductVariantEnergyLabel`, `ProductVariantShippin
 | `CategoryBySlugQuery` | `category/bySlug.query.ts` | Tree-Traversal (lokal, kein zusätzlicher Call) |
 | `ChildCategoriesLink` | `category/child-categories.link.ts` | Tree |
 | `CategoryBreadcrumbLink` | `category/breadcrumb.link.ts` | Tree |
-| `CategoryProductsLink` | `category/products.link.ts` | Intelligent Search |
+| `CategoryProductsLink` | `category/products.link.ts` | Such-Provider (5.1) |
 | `MenuByAliasQuery` | `menu/byAlias.query.ts` | Tree, auf Menu-Aliase gemappt |
 
 Resolver `category/base.resolver.ts`: `CategoryBase`, `CategoryContent`, `CategorySeo`,
@@ -296,11 +370,16 @@ eine Parallelwelt. MasterData ist der Speicher, nicht die Schnittstelle.
 
 Resolver: `ProductListBase`, `ProductListVisibility`.
 
-### 6.8 Suggested Search
+### 6.8 Suggested Search — **blockiert**
+
 | Token | VTEX |
 |---|---|
 | `SuggestedSearchSearchQuery` | `GET /api/io/_v/api/intelligent-search/search_suggestions` |
 | `SuggestedSearchEntriesLink`, `SuggestedSearchProductsLink` | `top_searches`, `correction_search` |
+
+Diese Handler lassen sich derzeit **nicht bauen**. Alle drei Endpunkte gehören zu Intelligent
+Search, das auf dem Konto nicht aktiv ist, und Legacy Search hat kein Gegenstück für Autocomplete.
+Sie kommen, sobald der Store aktiviert ist — das Interface aus 5.1 hält den Platz dafür offen.
 
 ---
 
@@ -411,6 +490,9 @@ entfallen:
 - **Cart-Zusatzoperationen** — Coupons, `shippingData`, `clientProfileData`, `marketingData`,
   Shipping-Simulation. Kein kanonisches Token vorhanden.
 - **Reviews Update/Delete** — nur `CreateReviewAction` existiert.
+- **Suggested Search / Autocomplete** — nicht grundsätzlich ausgeschlossen, aber derzeit nicht
+  baubar: Intelligent Search ist auf dem Konto nicht aktiv und Legacy Search hat kein Gegenstück
+  (Abschnitt 6.8).
 - **Catalog-Admin-Reads als eigene Handler** — Seller, Supplier, SpecificationGroup, SKU-EAN/Kit/
   Attachment/Service/Complement, Collection, Subcollection, Product-Indexing. Das sind interne
   Client-Bausteine unter `vtex-helper/catalog/`, die `ProductSpecifications`, `ProductBrand` und die
@@ -423,22 +505,49 @@ entfallen:
 
 ## 13. Umsetzungsreihenfolge
 
-1. `peerDependencies` um `@laioutr-core/kit` und `@laioutr-core/orchestr` ergänzen.
-2. `ModuleOptions` und RuntimeConfig in `src/module.ts`.
-3. Client-Schicht: `cookies.ts`, `vtexClientFactory.ts`, `types.ts`.
-4. `defineVtex.ts` mit namespaced Context und lazy Session.
+**Diese Runde — der vollständige Lesepfad.** Mutationen bleiben aussen vor.
+
+1. ~~`peerDependencies` um `@laioutr-core/kit` und `@laioutr-core/orchestr` ergänzen.~~ erledigt
+2. ~~`ModuleOptions` und RuntimeConfig in `src/module.ts`.~~ erledigt; `salesChannelByMarket` und
+   `searchProvider` kommen noch dazu
+3. **Testdaten seeden** (Abschnitt 13a) — zuerst, damit alles danach überhaupt prüfbar ist.
+4. Client-Schicht: `cookies.ts`, `vtexClientFactory.ts` mit Host-Auflösung pro API, `types.ts`.
 5. `money.ts` und die Mapper — vor allem, was Preise anfasst.
-6. Category-Tree-Helper plus `category/`- und `menu/`-Handler (public, cache-freundlich).
-7. Intelligent Search: `ProductSearchQuery`, `SuggestedSearch*`.
-8. Product und ProductVariant: Queries, Links, Resolver, Composition-Helper, Passthrough-Tokens.
-9. Page-Indexes für `ProductDetailPage`, `ProductListingPage`, `ProductSearchPage`.
-10. Cart und CartItem — hier ist das Cookie-Handling kritisch.
-11. Auth, Customer, Address.
-12. Review plus `ProductRating`.
-13. ProductList (Wishlist) auf MasterData.
-14. Order.
-15. Query-Templates.
-16. Fehler-Mapping über alle Handler ziehen.
+6. `defineVtex.ts` mit namespaced Context, Markt-Map und lazy Session.
+7. Such-Provider: Interface plus Legacy-Adapter (Abschnitt 5.1).
+8. Category-Tree-Helper plus `category/`- und `menu/`-Handler.
+9. Product und ProductVariant: Queries, Links, Resolver, Composition-Helper, Passthrough-Tokens.
+10. Page-Indexes für `ProductDetailPage`, `ProductListingPage`, `ProductSearchPage`.
+11. Query-Templates für `ProductsByCategorySlugQuery` und `MenuByAliasQuery`.
+12. Fehler-Mapping über alle Handler ziehen.
+
+**Danach, eigene Runden.** Cart und CartItem (Cookie-Handling kritisch) · Auth, Customer, Address ·
+Review plus `ProductRating` · ProductList/Wishlist auf MasterData · Order · Suggested Search und der
+Intelligent-Search-Adapter, sobald der Store aktiv ist.
+
+---
+
+## 13a. Testdaten
+
+Der Katalog enthält heute genau ein verwendbares Produkt. Damit lassen sich Listing, Facetten,
+Pagination und Varianten nicht sinnvoll prüfen — eine Stichprobe von eins beweist nichts.
+
+`scripts/seed-sandbox.ts` legt deshalb einen kleinen Fixture-Satz an: 6–8 Produkte über den
+bestehenden `Damen > Schuhe > Sneaker`-Ast plus einen zweiten Ast, damit `ChildCategoriesLink` und
+Breadcrumbs echte Geschwister und Tiefe haben; **gestreute Preise**, damit `PriceRanges` überhaupt
+Werte bekommt (heute leer, weil ein Produkt genau einen Preis hat); ein Produkt mit drei SKUs für
+`ProductVariantsLink` und `ProductVariantOptions`.
+
+Die Reihenfolge pro Produkt ist nicht frei wählbar:
+
+    Produkt anlegen -> SKU anlegen -> Bild anhängen -> Preis -> Bestand -> SKU aktivieren
+
+VTEX verweigert die Aktivierung einer SKU ohne Datei, und der File-by-URL-Endpunkt quittiert
+sporadisch mit einem 500er SQL-Timeout — das Skript braucht Retries, kein Vertrauen in den ersten
+Versuch. Nach dem Seeding dauert es, bis die Suche die Produkte kennt.
+
+Das Skript wird eingecheckt, damit der Fixture-Satz reproduzierbar bleibt; `files: ["dist"]` hält es
+aus dem npm-Paket heraus.
 
 ---
 
@@ -455,8 +564,10 @@ entfallen:
   - **Wishlist:** `ProductListAddItemsAction` → über `ProductListGetWishlistQuery` sichtbar,
     `ProductListRemoveItemsAction` entfernt.
   - **Page-Index:** `list` und `locate` für `ProductDetailPage` liefern konsistente Slugs.
-- Unit-Tests (Vitest) für `vtexClientFactory` (Cookie-Passthrough, Header-Injection, public vs.
-  admin Routing gegen gemocktes `fetch`), `money.ts` und die Tree-Traversal-Helper. Keine
+- **Unit-Tests (Vitest)** gegen gemocktes `fetch`: Host-Auflösung (Pricing landet auf
+  `api.vtex.com`, alles andere auf der Account-Domain), Cookie-Weitergabe in `publicFetch` und
+  ausdrücklich **keine** in `adminFetch`, beide Money-Richtungen, Tree-Traversal und Slug->ID,
+  Legacy-Facetten -> `AvailableFilter`, Sales-Channel-Auflösung aus der Markt-Map. Keine
   Komponenten-Tests.
 
 ---
@@ -465,9 +576,17 @@ entfallen:
 
 1. **MasterData-ACL** — darf der Customer-Token direkt in `wishlist`, `CL` und `AD` schreiben, oder
    braucht es durchgängig `adminFetch` mit `shopperId` aus dem Auth-Cookie?
-2. **Facetten-Quelle** — Intelligent-Search-Facetten (dynamisch, filtert leere Werte) oder Category
-   Specifications (statisch, `adminFetch`)? Tendenz: Intelligent Search, dann entfällt der
-   Spec-Call für PLPs.
+2. ~~Facetten-Quelle~~ — **entschieden:** Legacy-Search-Facetten
+   (`facets/search/{term}?map=ft`, `facets/category/{id}`). Intelligent Search steht auf diesem
+   Konto nicht zur Verfügung, und Category Specifications würden je PLP einen `adminFetch` kosten.
+   Der Legacy-Endpunkt liefert `Departments`, `Brands`, `CategoriesTrees` und `PriceRanges` und wird
+   auf `AvailableFilter` gemappt. `map` ist Pflicht — fehlt er, antwortet die API mit 400.
 3. **Sales-Channel und Locale pro Request** — Ableitung aus `clientEnv` festlegen, inklusive
    Fallback, wenn ein Markt keinen Sales-Channel gemappt hat.
-4. **Tree-Cache-Invalidierung** — TTL allein, oder ein Invalidierungspfad bei Katalogänderungen?
+4. ~~Tree-Cache-Invalidierung~~ — **entschieden:** Nitro-Cache mit 10 Minuten TTL und **ohne**
+   Invalidierungspfad. Eine Invalidierung bräuchte einen Katalog-Webhook, den es hier nicht gibt;
+   der Baum ändert sich selten genug, dass eine kurze TTL der ehrlichere Kompromiss ist.
+5. **Intelligent Search aktivieren** — sämtliche IO-Endpunkte antworten mit HTTP 400 und
+   `"Store is not active."`, auch mit gültigem Suchbegriff. Das ist Store-Provisioning, keine
+   Parameterfrage. Solange das offen ist, laufen Suche und PLP über den Legacy-Adapter und
+   Autocomplete existiert nicht.

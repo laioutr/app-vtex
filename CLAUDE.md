@@ -174,5 +174,10 @@ New rules given by the user go in `.claude/rules/` as their own file. Ask if a r
 
 ## Further reading
 
+**Start here for this app:** [`docs/environment.md`](./docs/environment.md) records the VTEX
+sandbox account, the changes made to it, the API traps that cost time, the npm and CI state, and
+the inherited defects left unfixed. The implementation plan with the canonical token bindings is
+[`docs/plans/2026-08-20-vtex-wrapper-plan.md`](./docs/plans/2026-08-20-vtex-wrapper-plan.md).
+
 Platform documentation lives at [docs.laioutr.com](https://docs.laioutr.com) — Orchestr, the data
 model, UI components, sections and blocks, and the API reference.
