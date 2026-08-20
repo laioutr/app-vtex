@@ -21,36 +21,41 @@ export const createVtexClient = (deps: VtexClientDeps): VtexClient => {
     path: string,
     init: RequestInit,
     headers: Record<string, string>
-  ): Promise<T> => {
+  ): Promise<{ data: T; headers: Headers }> => {
     const res = await doFetch(`${resolveHost(api, deps)}${path}`, { ...init, headers });
 
     for (const raw of res.headers.getSetCookie?.() ?? []) deps.onSetCookie(raw);
 
     const body = await res.json().catch(() => undefined);
     if (!res.ok) throw new VtexApiError(res.status, api, path, body);
-    return body as T;
+    return { data: body as T, headers: res.headers };
   };
+
+  const publicHeaders = (init: RequestInit) => ({
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+    ...((init.headers as Record<string, string>) ?? {}),
+  });
 
   return {
     isAuthenticated: hasAuthCookie(deps.cookies, deps.accountName),
     salesChannel: deps.salesChannel,
 
-    publicFetch: (api, path, init = {}) =>
-      request(api, path, init, {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-        ...((init.headers as Record<string, string>) ?? {}),
-      }),
+    publicFetch: async <T>(api: VtexApi, path: string, init: RequestInit = {}) =>
+      (await request<T>(api, path, init, publicHeaders(init))).data,
+
+    publicFetchRaw: <T>(api: VtexApi, path: string, init: RequestInit = {}) =>
+      request<T>(api, path, init, publicHeaders(init)),
 
     // No shopper cookie here: an app-authenticated call must not also carry a customer identity.
-    adminFetch: (api, path, init = {}) =>
-      request(api, path, init, {
+    adminFetch: async <T>(api: VtexApi, path: string, init: RequestInit = {}) =>
+      (await request<T>(api, path, init, {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         'X-VTEX-API-AppKey': deps.appKey,
         'X-VTEX-API-AppToken': deps.appToken,
         ...((init.headers as Record<string, string>) ?? {}),
-      }),
+      })).data,
   };
 };

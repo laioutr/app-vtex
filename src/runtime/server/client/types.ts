@@ -37,6 +37,12 @@ export class VtexApiError extends Error {
 
 export interface VtexClient {
   publicFetch<T>(api: VtexApi, path: string, init?: RequestInit): Promise<T>;
+  /** Legacy Search reports its total in the `resources` header, which `publicFetch` discards. */
+  publicFetchRaw<T>(
+    api: VtexApi,
+    path: string,
+    init?: RequestInit
+  ): Promise<{ data: T; headers: Headers }>;
   adminFetch<T>(api: VtexApi, path: string, init?: RequestInit): Promise<T>;
   readonly isAuthenticated: boolean;
   readonly salesChannel: string;
