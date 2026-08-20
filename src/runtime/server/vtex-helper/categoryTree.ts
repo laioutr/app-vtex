@@ -57,14 +57,17 @@ export const categoryPathOf = (nodes: VtexCategoryNode[], id: number): string =>
 };
 
 /**
- * Depth 5 covers every level this catalog uses. Cached for ten minutes: the tree changes rarely,
- * and VTEX offers no invalidation hook to key a shorter-lived cache off.
+ * The depth is deliberately far past any real tree: VTEX clamps it to the depth that exists, so an
+ * over-estimate costs nothing while an under-estimate drops the levels below it without a word.
+ *
+ * Cached for ten minutes: the tree changes rarely, and VTEX offers no invalidation hook to key a
+ * shorter-lived cache off.
  */
 export const loadCategoryTree = defineCachedFunction(
   async (client: VtexClient) =>
     client.publicFetch<VtexCategoryNode[]>(
       'catalogSystem',
-      '/api/catalog_system/pub/category/tree/5'
+      '/api/catalog_system/pub/category/tree/50'
     ),
   { maxAge: 600, name: 'vtex-category-tree', getKey: () => 'tree' }
 );
