@@ -89,9 +89,33 @@ Nothing else on the account was modified.
   back to `/api/catalog/pvt/product/{id}` `[adminFetch]`; indexing follows within minutes. Category
   assignments propagate later than the product itself, so a product can be findable by `ft=` while
   `fq=C:` still misses it.
+- `GET /api/catalog_system/pvt/sku/stockkeepingunitbyid/{skuId}` is a **lagging read-model**: it
+  reported a SKU as inactive with no images or specifications minutes after all three were set and
+  confirmed. `GET /api/catalog/pvt/stockkeepingunit/{skuId}` and its `/specification` and `/file`
+  sub-resources are authoritative — check those before concluding a write failed.
+- Assigning a specification takes a **scalar** `FieldValueId`. An array answers 400 with an empty
+  body, which reads like a malformed request rather than a wrong field type:
+  `POST /api/catalog/pvt/product/{id}/specification` and
+  `POST /api/catalog/pvt/stockkeepingunit/{id}/specification`, body `{FieldId, FieldValueId, Text}`.
+- Writes to this account **fail transiently with an empty 500** and succeed on retry — seen on
+  specification and file creation. Retry before treating one as a real failure.
 - Sales channels enumerate only on the **private** path: `GET /api/catalog_system/pvt/saleschannel/list`
   `[adminFetch]` returns 200, while the `pub` variant of that path does not exist and 404s.
   This account has exactly one channel: id `1`, "Main", `EUR`, active.
+
+### Test fixture: product 137327
+
+`Laioutr Test Sneaker` (`laioutr-test-sneaker`) exists to exercise the two mapping paths the seeded
+catalog leaves empty — SKU option axes and product specifications. It sits in category 8
+(`herren/schuhe/sneaker/flache-sneaker`) and carries:
+
+- specification group 5 "Laioutr Test Attributes" on category 8, with fields `Farbe` (20),
+  `Groesse` (18) and `Material` (19)
+- SKU 756290 — Farbe Rot, Groesse 42, **59.99** (list 79.99)
+- SKU 756291 — Farbe Blau, Groesse 43, **69.99**
+
+The prices differ deliberately: it is the only product here whose SKUs disagree, so it is what
+tells a product-level "from" price apart from a flat one.
 
 ## npm
 
