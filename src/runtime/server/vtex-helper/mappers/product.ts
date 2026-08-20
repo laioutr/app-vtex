@@ -17,9 +17,15 @@ export interface VtexItem {
   itemId: string;
   name: string;
   nameComplete?: string;
+  ean?: string | null;
   images?: VtexImage[];
   sellers?: { commertialOffer: VtexCommertialOffer }[];
-  variations?: Record<string, string[]>;
+  /**
+   * Names of the SKU's option axes. Each name is also a key on this item holding its values, so
+   * the axes can only be read by looking the names back up.
+   */
+  variations?: string[] | null;
+  [option: string]: unknown;
 }
 
 export interface VtexProduct {
