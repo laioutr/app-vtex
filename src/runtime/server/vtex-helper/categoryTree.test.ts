@@ -73,11 +73,15 @@ describe('ancestorsOf', () => {
 
 describe('categoryPathOf', () => {
   it('builds the VTEX category path used by fq=C:', () => {
-    expect(categoryPathOf(tree, 4)).toBe('/2/3/4/');
+    expect(categoryPathOf(tree, 4)).toBe('2/3/4');
   });
 
   it('handles a root category', () => {
-    expect(categoryPathOf(tree, 2)).toBe('/2/');
+    expect(categoryPathOf(tree, 2)).toBe('2');
+  });
+
+  it('carries no leading or trailing slash, both of which VTEX rejects', () => {
+    expect(categoryPathOf(tree, 4)).not.toMatch(/^\/|\/$/);
   });
 
   it('returns an empty string for an unknown id', () => {

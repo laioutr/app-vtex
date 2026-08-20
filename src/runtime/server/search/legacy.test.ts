@@ -44,12 +44,12 @@ describe('createLegacySearchProvider', () => {
   it('filters by category path with fq=C:, which is how a PLP lists', async () => {
     const raw = withResources([], 'items 0-0/0');
     await createLegacySearchProvider(client(raw)).searchProducts({
-      categoryPath: '/2/3/',
+      categoryPath: '2/3',
       from: 0,
       to: 9,
       salesChannel: '1',
     });
-    expect(raw.mock.calls[0][1]).toContain('fq=C%3A%2F2%2F3%2F');
+    expect(raw.mock.calls[0][1]).toContain('fq=C%3A2%2F3');
   });
 
   it('maps legacy facet groups onto AvailableFilter', async () => {

@@ -45,10 +45,15 @@ export const ancestorsOf = (nodes: VtexCategoryNode[], id: number): VtexCategory
   return walk(nodes, []) ?? [];
 };
 
+/**
+ * Slash-free on both ends, because VTEX rejects the alternatives: `fq=C:/2` answers 400, and a
+ * trailing slash on a nested path — `fq=C:/2/3/4/` — matches nothing at all while still returning
+ * 200, so the mistake surfaces as an empty listing rather than an error.
+ */
 export const categoryPathOf = (nodes: VtexCategoryNode[], id: number): string => {
   const node = findById(nodes, id);
   if (!node) return '';
-  return `/${[...ancestorsOf(nodes, id), node].map((n) => n.id).join('/')}/`;
+  return [...ancestorsOf(nodes, id), node].map((n) => n.id).join('/');
 };
 
 /**

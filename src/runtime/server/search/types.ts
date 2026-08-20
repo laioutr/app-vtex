@@ -2,7 +2,7 @@ import type { AvailableFilter } from '@laioutr-core/orchestr/types';
 
 export interface SearchProductsInput {
   term?: string;
-  /** VTEX category path, e.g. '/2/3/'. */
+  /** VTEX category id path, slash-separated with no leading or trailing slash: '2/3'. */
   categoryPath?: string;
   from: number;
   to: number;

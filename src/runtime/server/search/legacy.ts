@@ -47,7 +47,7 @@ export const createLegacySearchProvider = (client: VtexClient): SearchProvider =
   async searchProducts({ term, categoryPath, from, to, salesChannel }) {
     const params = new URLSearchParams({ _from: String(from), _to: String(to), sc: salesChannel });
     if (term) params.set('ft', term);
-    // `fq=skuId:` silently returns nothing; category filtering uses the C: path form.
+    // `fq=skuId:` silently returns nothing; category filtering uses the C: id-path form.
     if (categoryPath) params.append('fq', `C:${categoryPath}`);
 
     const { data, headers } = await client.publicFetchRaw<LegacyProduct[]>(
