@@ -17,10 +17,21 @@ See [laioutr.com](https://laioutr.com) for more information about Laioutr.
 
 ## Features
 
-<!-- Highlight some of the features your module provide here -->
+The read path, bound to canonical Orchestr tokens:
 
-Scaffolding only so far — the Orchestr handlers, resolvers and client layer are not implemented
-yet. See [the implementation plan](./docs/plans/2026-08-20-vtex-wrapper-plan.md) for the intended scope.
+- **Categories** — the VTEX category tree as queries, child and breadcrumb links, and a component
+  resolver. A category's slug is its whole URL path, because names repeat across the tree.
+- **Menu** — a menu is a subtree of the category tree, selected by alias.
+- **Products** — by slug, by category and by search term, with variants, breadcrumb and category
+  links, and resolvers for identity, media, prices, brand and specifications.
+- **Product variants** — VTEX SKUs, with options, availability and prices.
+- **Page-indexes** — product detail, category listing and search, so the storefront has URLs.
+- **Search** — behind a `SearchProvider` interface with a Legacy Search adapter. Intelligent Search
+  is a second implementation of the same interface; it needs an active VTEX IO store.
+
+Not yet built: cart, authentication, customer, orders, reviews and autocomplete. See
+[the implementation plan](./docs/plans/2026-08-20-vtex-wrapper-plan.md) for the full intended scope
+and [docs/environment.md](./docs/environment.md) for the account state and the API traps.
 
 ## Quick Setup
 

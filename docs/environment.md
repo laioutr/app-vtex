@@ -51,9 +51,14 @@ Nothing else on the account was modified.
 
 ### API traps found the hard way
 
-- `fq=skuId:{id}` **does not filter** — it returns an empty list. Use `fq=productId:{id}`.
-- `products/search` with no `fq` also returns empty. It is not a catalog dump; use
-  `GET /api/catalog_system/pvt/products/GetProductAndSkuIds` `[adminFetch]` for enumeration.
+- `fq=skuId:{id}` works as a **lookup**, returning the SKU's whole parent product with every
+  sibling item. It does not narrow the response to that one SKU, so pick the item out by `itemId`.
+- `products/search` with no `fq` returns **the catalog, capped by `_to`** — 43 products on this
+  account. An earlier note here said it returns empty; that was true only while nothing was
+  indexed. It is not a safe fallback: a handler that drops its filter silently reports every
+  product instead of failing, so guard the filter before the call. Enumerate deliberately with
+  `GET /api/catalog_system/pvt/products/GetProductAndSkuIds` `[adminFetch]`, whose `_from`/`_to`
+  range is 1-indexed and inclusive at both ends.
 - The slug path is case-sensitive and returns an **empty result rather than a 404** for the wrong
   casing, which reads exactly like "not indexed". It is not.
 - `GET /api/catalog_system/pvt/products/GetIndexedInfo/{productId}` is the only indexing endpoint
@@ -65,11 +70,25 @@ Nothing else on the account was modified.
   a parameter problem. An earlier note here blamed the empty query; that was wrong.
 - Legacy Search covers the gap for search and listing but **not autocomplete**:
   - full text: `products/search/{term}` or `products/search?ft={term}`
-  - category listing: `products/search?fq=C:/{categoryPath}/`
+  - category listing: `products/search?fq=C:{a}/{b}/{c}` — the id path with **no leading and no
+    trailing slash**. The other spellings fail in different ways: `fq=C:/1` answers 400, and
+    `fq=C:/1/2/3/` answers **200 with an empty list**, so a trailing slash reads as "this category
+    has no products". A single segment tolerates both (`C:1` and `C:/1/` agree); nested paths do
+    not. An unknown category id answers 400.
   - facets: `facets/search/{term}?map=ft` and `facets/category/{id}` — `map` is **required**, and
     omitting it is the 400 it looks like. Returns `Departments`, `Brands`, `CategoriesTrees`,
     `PriceRanges`.
   - there is no legacy equivalent for suggestions or top searches.
+- Category names are **not unique** — this catalog carries three separate "Sport", "Bekleidung",
+  "Hosen" and "T-Shirts & Tops" categories under Damen, Herren and Kinder, and two "Schuhe". A
+  category slug is therefore its whole URL path (`herren/schuhe`), never the last segment.
+- The category tree node carries `Title` and `MetaTagDescription` alongside `name`, but no
+  description, so `CategoryContent` has no source here. `Title` is null on root categories.
+- **There is no reindex endpoint on this account** — `/api/catalog/pvt/indexingstatus` and the
+  per-product reindex paths all 404. To re-enqueue a product, GET it and PUT the identical payload
+  back to `/api/catalog/pvt/product/{id}` `[adminFetch]`; indexing follows within minutes. Category
+  assignments propagate later than the product itself, so a product can be findable by `ft=` while
+  `fq=C:` still misses it.
 - Sales channels enumerate only on the **private** path: `GET /api/catalog_system/pvt/saleschannel/list`
   `[adminFetch]` returns 200, while the `pub` variant of that path does not exist and 404s.
   This account has exactly one channel: id `1`, "Main", `EUR`, active.
