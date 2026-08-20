@@ -68,7 +68,7 @@ describe('toProductComponents', () => {
       {
         type: 'image',
         alt: 'Seitenansicht',
-        sources: [{ provider: 'raw', src: 'https://cdn.example/x.jpg' }],
+        sources: [{ provider: 'vtex', src: 'https://cdn.example/x.jpg' }],
       },
     ]);
     expect(info.cover).toEqual(media.images[0]);

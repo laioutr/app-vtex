@@ -9,7 +9,7 @@ const toMediaImage = (item: VtexItem): MediaImage | undefined => {
   return {
     type: 'image',
     alt: image.imageText || image.imageLabel || undefined,
-    sources: [{ provider: 'raw', src: image.imageUrl }],
+    sources: [{ provider: 'vtex', src: image.imageUrl }],
   };
 };
 

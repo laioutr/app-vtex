@@ -51,8 +51,8 @@ export interface VtexProduct {
 const toMediaImage = (image: VtexImage): MediaImage => ({
   type: 'image',
   alt: image.imageText || image.imageLabel || undefined,
-  // `raw` rather than a named provider: VTEX serves these from its own CDN with no NuxtImage driver.
-  sources: [{ provider: 'raw', src: image.imageUrl }],
+  // VTEX resizes on its own CDN; the provider turns a requested size into the right URL.
+  sources: [{ provider: 'vtex', src: image.imageUrl }],
 });
 
 const imagesOf = (product: VtexProduct): VtexImage[] =>

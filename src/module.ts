@@ -80,6 +80,12 @@ export default defineNuxtModule<ModuleOptions>({
       orchestrDirs: [resolveRuntimeModule('server/orchestr')],
       sections: [resolveRuntimeModule('app/sections')],
       blocks: [resolveRuntimeModule('app/blocks')],
+      nuxtImageProviders: {
+        vtex: {
+          name: 'vtex',
+          provider: resolveRuntimeModule('./app/image/providers/vtex'),
+        },
+      },
     });
 
     // Install peer-dependency modules only on prepare-step.
