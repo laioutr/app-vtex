@@ -5,3 +5,6 @@
  * every upstream call the handler makes.
  */
 export const defineCachedFunction = <T extends (...args: never[]) => unknown>(fn: T): T => fn;
+
+/** Only ever used as a map key, so an object carrying the name is a faithful enough stand-in. */
+export const createPassthroughToken = <T>(name: string) => ({ name }) as { name: string } & { __type?: T };

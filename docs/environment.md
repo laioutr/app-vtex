@@ -97,6 +97,14 @@ Nothing else on the account was modified.
   body, which reads like a malformed request rather than a wrong field type:
   `POST /api/catalog/pvt/product/{id}/specification` and
   `POST /api/catalog/pvt/stockkeepingunit/{id}/specification`, body `{FieldId, FieldValueId, Text}`.
+- `fq=productId:{id}` **needs an explicit `_from`/`_to`**. Without one it answers 200 with an empty
+  list for some products and correctly for others; with `_from=0&_to={n-1}` it answers 206 and is
+  reliable at every batch size tested (1-11 ids). The empty answer is indistinguishable from "no
+  such product", so never omit the window.
+- Indexing lands in stages, and a product is reachable by some queries before others: the slug path
+  `products/search/{slug}/p` resolved a new product while `categoriesFullPath` was still empty in
+  the index and `fq=C:` therefore missed it. A freshly created product can resolve its detail-page
+  id and still have no listing presence for a while.
 - Writes to this account **fail transiently with an empty 500** and succeed on retry — seen on
   specification and file creation. Retry before treating one as a real failure.
 - Sales channels enumerate only on the **private** path: `GET /api/catalog_system/pvt/saleschannel/list`
