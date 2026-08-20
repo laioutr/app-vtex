@@ -1,6 +1,6 @@
-import type { AvailableFilter, WellKnownFilterName } from '@laioutr-core/orchestr/types';
-import type { VtexClient } from '../client/types';
 import type { SearchProvider } from './types';
+import type { VtexClient } from '../client/types';
+import type { AvailableFilter, WellKnownFilterName } from '@laioutr-core/orchestr/types';
 
 interface LegacyProduct {
   productId: string;

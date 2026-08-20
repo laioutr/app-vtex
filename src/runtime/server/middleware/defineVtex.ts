@@ -1,8 +1,8 @@
-import { defineOrchestr, useRuntimeConfig } from '#imports';
 import { appendResponseHeader, parseCookies } from 'h3';
-import { createVtexClient } from '../client/vtexClientFactory';
-import { resolveSalesChannel } from '../client/salesChannel';
+import { defineOrchestr, useRuntimeConfig } from '#imports';
 import { name } from '../../../../package.json';
+import { resolveSalesChannel } from '../client/salesChannel';
+import { createVtexClient } from '../client/vtexClientFactory';
 
 export const defineVtex = defineOrchestr
   .meta({

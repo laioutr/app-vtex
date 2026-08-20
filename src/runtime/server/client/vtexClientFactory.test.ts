@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createVtexClient } from './vtexClientFactory';
-import { VtexApiError } from './types';
 import { authCookieName } from './cookies';
+import { VtexApiError } from './types';
+import { createVtexClient } from './vtexClientFactory';
 
 const ACCOUNT = 'laioutrpartner';
 

@@ -1,8 +1,8 @@
 import { forwardableCookieHeader, hasAuthCookie } from './cookies';
 import {
   resolveHost,
-  VtexApiError,
   type VtexApi,
+  VtexApiError,
   type VtexClient,
   type VtexClientDeps,
 } from './types';

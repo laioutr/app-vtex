@@ -7,13 +7,18 @@ export interface VtexCategoryNode {
   url: string;
   children: VtexCategoryNode[];
   hasChildren: boolean;
+  /** Page title; VTEX leaves it null on root categories. */
+  Title?: string | null;
+  MetaTagDescription?: string | null;
 }
 
-/** VTEX returns an absolute storefront URL; the storefront addresses categories by last segment. */
-export const slugFromUrl = (url: string): string => {
-  const path = url.replace(/\/+$/, '');
-  return path.slice(path.lastIndexOf('/') + 1);
-};
+/**
+ * The whole URL path, not its last segment: category names repeat across the tree — this catalog
+ * carries three separate "Sport" and "Bekleidung" categories under Damen, Herren and Kinder — so a
+ * last-segment slug would address several categories at once.
+ */
+export const slugFromUrl = (url: string): string =>
+  url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/+|\/+$/g, '');
 
 export const flatten = (nodes: VtexCategoryNode[]): VtexCategoryNode[] =>
   nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);

@@ -26,12 +26,18 @@ const tree: VtexCategoryNode[] = [
 ];
 
 describe('slugFromUrl', () => {
-  it('takes the last path segment', () => {
-    expect(slugFromUrl('https://shop.example/damen/schuhe/sneaker')).toBe('sneaker');
+  it('takes the whole path, not the last segment', () => {
+    expect(slugFromUrl('https://shop.example/damen/schuhe/sneaker')).toBe('damen/schuhe/sneaker');
   });
 
   it('tolerates a trailing slash', () => {
     expect(slugFromUrl('https://shop.example/damen/')).toBe('damen');
+  });
+
+  it('keeps categories that share a name distinct', () => {
+    expect(slugFromUrl('https://shop.example/damen/schuhe')).not.toBe(
+      slugFromUrl('https://shop.example/herren/schuhe')
+    );
   });
 });
 
@@ -46,8 +52,8 @@ describe('flatten', () => {
 });
 
 describe('findBySlug', () => {
-  it('finds a nested category', () => {
-    expect(findBySlug(tree, 'sneaker')?.id).toBe(4);
+  it('finds a nested category by its full path', () => {
+    expect(findBySlug(tree, 'damen/schuhe/sneaker')?.id).toBe(4);
   });
 
   it('returns undefined for an unknown slug', () => {
