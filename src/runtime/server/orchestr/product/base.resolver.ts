@@ -8,7 +8,14 @@ import {
 } from '@laioutr-core/canonical-types/entity/product';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { loadProducts } from '../../vtex-helper/loadProducts';
-import { toProductComponents } from '../../vtex-helper/mappers/product';
+import {
+  toProductBase,
+  toProductBrand,
+  toProductDescription,
+  toProductMedia,
+  toProductSeo,
+  toProductSpecifications,
+} from '../../vtex-helper/mappers/product';
 
 export default defineVtexComponentResolver({
   label: 'VTEX Product Connector',
@@ -23,25 +30,23 @@ export default defineVtexComponentResolver({
     ProductBrand,
     ProductSpecifications,
   ],
-  resolve: async ({ entityIds, context, clientEnv, passthrough, $entity }) => {
+  resolve: async ({ entityIds, context, passthrough, $entity }) => {
     const products = await loadProducts(context.vtexClient, passthrough, entityIds);
-    const currency = clientEnv.market.currency;
 
     const entities = entityIds.flatMap((id) => {
       const product = products.find((p) => p.productId === id);
       if (!product) return [];
 
-      const mapped = toProductComponents(product, currency);
-
+      // Each thunk maps its own slice, and Orchestr calls only the ones it was asked for.
       return [
         $entity({
           id,
-          base: () => mapped.base,
-          description: () => mapped.description,
-          media: () => mapped.media,
-          seo: () => mapped.seo,
-          brand: () => mapped.brand,
-          specifications: () => mapped.specifications,
+          base: () => toProductBase(product),
+          description: () => toProductDescription(product),
+          media: () => toProductMedia(product),
+          seo: () => toProductSeo(product),
+          brand: () => toProductBrand(product),
+          specifications: () => toProductSpecifications(product),
         }),
       ];
     });

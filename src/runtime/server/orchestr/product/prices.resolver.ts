@@ -1,7 +1,7 @@
 import { ProductPrices } from '@laioutr-core/canonical-types/entity/product';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { loadProducts } from '../../vtex-helper/loadProducts';
-import { toProductComponents } from '../../vtex-helper/mappers/product';
+import { toProductPrices } from '../../vtex-helper/mappers/product';
 
 export default defineVtexComponentResolver({
   label: 'VTEX Product Prices Connector',
@@ -15,7 +15,7 @@ export default defineVtexComponentResolver({
       const product = products.find((p) => p.productId === id);
       if (!product) return [];
 
-      const { prices } = toProductComponents(product, currency);
+      const prices = toProductPrices(product, currency);
       // A product with no seller has no price, and the component's price is required.
       if (!prices) return [];
 

@@ -108,24 +108,54 @@ const toSpecifications = (product: VtexProduct) => {
   return properties.length ? { properties } : {};
 };
 
-export const toProductComponents = (product: VtexProduct, currency: string) => {
+/**
+ * One function per component rather than one building all of them: Orchestr invokes a component's
+ * thunk only when that component was asked for, so a resolver that computes everything up front
+ * throws most of the work away on a request that wanted one slice.
+ */
+export const toProductBase = (product: VtexProduct) => ({
+  name: product.productName,
+  slug: product.linkText,
+});
+
+export const toProductMedia = (product: VtexProduct) => {
   const images = imagesOf(product).map(toMediaImage);
-  const cover = images[0];
+  return { images, media: images as Media[] };
+};
+
+export const toProductInfo = (product: VtexProduct) => {
+  const cover = imagesOf(product).map(toMediaImage)[0];
 
   return {
-    base: { name: product.productName, slug: product.linkText },
-    info: {
-      ...(cover ? { cover } : {}),
-      ...(product.brand ? { brand: product.brand } : {}),
-    },
-    description: { html: product.description ?? '' },
-    media: { images, media: images as Media[] },
-    prices: toPrices(product, currency),
-    seo: {
-      title: product.productTitle || product.productName,
-      ...(product.metaTagDescription ? { description: product.metaTagDescription } : {}),
-    },
-    brand: product.brand ? { name: product.brand } : {},
-    specifications: toSpecifications(product),
+    ...(cover ? { cover } : {}),
+    ...(product.brand ? { brand: product.brand } : {}),
   };
 };
+
+export const toProductDescription = (product: VtexProduct) => ({
+  html: product.description ?? '',
+});
+
+export const toProductSeo = (product: VtexProduct) => ({
+  title: product.productTitle || product.productName,
+  ...(product.metaTagDescription ? { description: product.metaTagDescription } : {}),
+});
+
+export const toProductBrand = (product: VtexProduct) =>
+  product.brand ? { name: product.brand } : {};
+
+export const toProductPrices = toPrices;
+
+export const toProductSpecifications = toSpecifications;
+
+/** Every component at once. Convenient for a suite; a resolver should reach for the parts. */
+export const toProductComponents = (product: VtexProduct, currency: string) => ({
+  base: toProductBase(product),
+  info: toProductInfo(product),
+  description: toProductDescription(product),
+  media: toProductMedia(product),
+  prices: toProductPrices(product, currency),
+  seo: toProductSeo(product),
+  brand: toProductBrand(product),
+  specifications: toProductSpecifications(product),
+});

@@ -1,7 +1,7 @@
 import { ProductVariantAvailability } from '@laioutr-core/canonical-types/entity/product-variant';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { loadVariants } from '../../vtex-helper/loadVariants';
-import { toVariantComponents } from '../../vtex-helper/mappers/productVariant';
+import { toVariantAvailability } from '../../vtex-helper/mappers/productVariant';
 
 export default defineVtexComponentResolver({
   label: 'VTEX Product Variant Availability Connector',
@@ -9,16 +9,14 @@ export default defineVtexComponentResolver({
   // Stock moves faster than anything else a variant carries, so it resolves on its own: sharing a
   // resolver with the stable components would force them to be re-read at the pace of this one.
   provides: [ProductVariantAvailability],
-  resolve: async ({ entityIds, context, clientEnv, passthrough, $entity }) => {
+  resolve: async ({ entityIds, context, passthrough, $entity }) => {
     const variants = await loadVariants(context.vtexClient, passthrough, entityIds);
-    const currency = clientEnv.market.currency;
 
     const entities = entityIds.flatMap((id) => {
       const hit = variants.get(id);
       if (!hit) return [];
 
-      const { availability } = toVariantComponents(hit.item, currency);
-      return [$entity({ id, availability: () => availability })];
+      return [$entity({ id, availability: () => toVariantAvailability(hit.item) })];
     });
 
     return { entities };

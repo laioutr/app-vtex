@@ -21,47 +21,62 @@ const toSelectedOptions = (item: VtexItem) =>
     return [{ name, value: String(values[0]) }];
   });
 
-export const toVariantComponents = (item: VtexItem, currency: string) => {
-  const offer = item.sellers?.[0]?.commertialOffer;
-  const image = toMediaImage(item);
-  const quantity = offer?.AvailableQuantity ?? 0;
+/** One function per component, so a resolver computes only the slice that was requested. */
+export const toVariantBase = (item: VtexItem) => ({
+  sku: item.itemId,
+  name: item.name,
+  // VTEX returns an empty string for an unset EAN, which is not a GTIN.
+  ...(item.ean ? { gtin: item.ean } : {}),
+});
 
-  const price = offer ? fromDecimal(offer.Price, currency) : undefined;
+export const toVariantInfo = (item: VtexItem) => {
+  const image = toMediaImage(item);
+  return image ? { image } : {};
+};
+
+export const toVariantOptions = (item: VtexItem) => {
+  const image = toMediaImage(item);
+
+  return {
+    selected: toSelectedOptions(item),
+    ...(image ? { image } : {}),
+  };
+};
+
+export const toVariantAvailability = (item: VtexItem) => {
+  const quantity = item.sellers?.[0]?.commertialOffer?.AvailableQuantity ?? 0;
+  return { status: quantity > 0 ? ('inStock' as const) : ('outOfStock' as const), quantity };
+};
+
+export const toVariantPrices = (item: VtexItem, currency: string) => {
+  const offer = item.sellers?.[0]?.commertialOffer;
+  if (!offer) return undefined;
+
+  const price = fromDecimal(offer.Price, currency);
   const listPrice =
-    offer && typeof offer.ListPrice === 'number' && offer.ListPrice > offer.Price
+    typeof offer.ListPrice === 'number' && offer.ListPrice > offer.Price
       ? fromDecimal(offer.ListPrice, currency)
       : undefined;
 
   return {
-    base: {
-      sku: item.itemId,
-      name: item.name,
-      // VTEX returns an empty string for an unset EAN, which is not a GTIN.
-      ...(item.ean ? { gtin: item.ean } : {}),
-    },
-    info: image ? { image } : {},
-    options: {
-      selected: toSelectedOptions(item),
-      ...(image ? { image } : {}),
-    },
-    availability: {
-      status: quantity > 0 ? ('inStock' as const) : ('outOfStock' as const),
-      quantity,
-    },
-    prices:
-      price ?
-        {
-          price,
-          ...(listPrice ? { strikethroughPrice: listPrice } : {}),
-          isOnSale: Boolean(listPrice),
-          ...(listPrice
-            ? {
-                savingsPercent: Math.round(
-                  ((listPrice.getAmount() - price.getAmount()) / listPrice.getAmount()) * 100
-                ),
-              }
-            : {}),
+    price,
+    ...(listPrice ? { strikethroughPrice: listPrice } : {}),
+    isOnSale: Boolean(listPrice),
+    ...(listPrice
+      ? {
+          savingsPercent: Math.round(
+            ((listPrice.getAmount() - price.getAmount()) / listPrice.getAmount()) * 100
+          ),
         }
-      : undefined,
+      : {}),
   };
 };
+
+/** Every component at once. Convenient for a suite; a resolver should reach for the parts. */
+export const toVariantComponents = (item: VtexItem, currency: string) => ({
+  base: toVariantBase(item),
+  info: toVariantInfo(item),
+  options: toVariantOptions(item),
+  availability: toVariantAvailability(item),
+  prices: toVariantPrices(item, currency),
+});

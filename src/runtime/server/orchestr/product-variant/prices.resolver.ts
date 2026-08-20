@@ -1,7 +1,7 @@
 import { ProductVariantPrices } from '@laioutr-core/canonical-types/entity/product-variant';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { loadVariants } from '../../vtex-helper/loadVariants';
-import { toVariantComponents } from '../../vtex-helper/mappers/productVariant';
+import { toVariantPrices } from '../../vtex-helper/mappers/productVariant';
 
 export default defineVtexComponentResolver({
   label: 'VTEX Product Variant Prices Connector',
@@ -15,7 +15,7 @@ export default defineVtexComponentResolver({
       const hit = variants.get(id);
       if (!hit) return [];
 
-      const { prices } = toVariantComponents(hit.item, currency);
+      const prices = toVariantPrices(hit.item, currency);
       // No seller means no price, and the component's price is required.
       if (!prices) return [];
 
