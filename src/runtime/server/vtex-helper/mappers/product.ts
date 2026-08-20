@@ -58,18 +58,25 @@ const toMediaImage = (image: VtexImage): MediaImage => ({
 const imagesOf = (product: VtexProduct): VtexImage[] =>
   product.items.flatMap((item) => item.images ?? []);
 
-/** The first seller's offer is the one the storefront transacts against. */
-const offerOf = (product: VtexProduct): VtexCommertialOffer | undefined =>
-  product.items.flatMap((item) => item.sellers ?? []).map((s) => s.commertialOffer)[0];
+/** One offer per SKU, from the seller the storefront transacts against. */
+const offersOf = (product: VtexProduct): VtexCommertialOffer[] =>
+  product.items.flatMap((item) => {
+    const offer = item.sellers?.[0]?.commertialOffer;
+    return offer ? [offer] : [];
+  });
 
 const toPrices = (product: VtexProduct, currency: string) => {
-  const offer = offerOf(product);
-  if (!offer) return undefined;
+  const offers = offersOf(product);
+  if (offers.length === 0) return undefined;
 
-  const price = fromDecimal(offer.Price, currency);
+  // A product's SKUs can be priced differently, and the cheapest is what a shopper is promised —
+  // so it sets the price, and any strikethrough has to be the one belonging to that same SKU.
+  const cheapest = offers.reduce((a, b) => (b.Price < a.Price ? b : a));
+
+  const price = fromDecimal(cheapest.Price, currency);
   const listPrice =
-    typeof offer.ListPrice === 'number' && offer.ListPrice > offer.Price
-      ? fromDecimal(offer.ListPrice, currency)
+    typeof cheapest.ListPrice === 'number' && cheapest.ListPrice > cheapest.Price
+      ? fromDecimal(cheapest.ListPrice, currency)
       : undefined;
 
   return {
@@ -83,8 +90,7 @@ const toPrices = (product: VtexProduct, currency: string) => {
           ),
         }
       : {}),
-    // Every item shares one offer here, so the displayed price is the price, not a floor.
-    isStartingFrom: false,
+    isStartingFrom: offers.some((offer) => offer.Price !== cheapest.Price),
   };
 };
 

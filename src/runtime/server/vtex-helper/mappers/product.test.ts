@@ -57,6 +57,52 @@ describe('toProductComponents', () => {
     expect(prices!.strikethroughPrice).toBeUndefined();
   });
 
+  it('prices a single-SKU product outright rather than as a floor', () => {
+    expect(toProductComponents(product, 'EUR').prices!.isStartingFrom).toBe(false);
+  });
+
+  it('takes the cheapest SKU when they disagree, and says the price is a floor', () => {
+    const mixed = {
+      ...product,
+      items: [
+        {
+          ...product.items[0],
+          itemId: '1',
+          sellers: [{ commertialOffer: { Price: 69.99, ListPrice: 69.99, AvailableQuantity: 5 } }],
+        },
+        {
+          ...product.items[0],
+          itemId: '2',
+          sellers: [{ commertialOffer: { Price: 59.99, ListPrice: 79.99, AvailableQuantity: 5 } }],
+        },
+      ],
+    };
+    const { prices } = toProductComponents(mixed, 'EUR');
+    expect(prices!.price.getAmount()).toBe(5999);
+    expect(prices!.isStartingFrom).toBe(true);
+    // The strikethrough belongs to the SKU that set the price, not to some other one.
+    expect(prices!.strikethroughPrice!.getAmount()).toBe(7999);
+  });
+
+  it('is not a floor when every SKU costs the same', () => {
+    const uniform = {
+      ...product,
+      items: [
+        {
+          ...product.items[0],
+          itemId: '1',
+          sellers: [{ commertialOffer: { Price: 49.99, ListPrice: null, AvailableQuantity: 5 } }],
+        },
+        {
+          ...product.items[0],
+          itemId: '2',
+          sellers: [{ commertialOffer: { Price: 49.99, ListPrice: null, AvailableQuantity: 5 } }],
+        },
+      ],
+    };
+    expect(toProductComponents(uniform, 'EUR').prices!.isStartingFrom).toBe(false);
+  });
+
   it('yields no prices for a product with no seller rather than inventing one', () => {
     const orphan = { ...product, items: [{ ...product.items[0], sellers: [] }] };
     expect(toProductComponents(orphan, 'EUR').prices).toBeUndefined();
