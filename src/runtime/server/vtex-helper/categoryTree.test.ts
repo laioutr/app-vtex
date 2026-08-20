@@ -94,3 +94,32 @@ describe('findById', () => {
     expect(findById(tree, 7)?.name).toBe('Taschen');
   });
 });
+
+describe('tree index', () => {
+  it('hands back a copy, so a caller sorting the result cannot corrupt later lookups', () => {
+    flatten(tree).sort((a, b) => b.id - a.id);
+    expect(flatten(tree).map((n) => n.id)).toEqual([2, 3, 4, 7]);
+    expect(findById(tree, 4)?.name).toBe('Sneaker');
+  });
+
+  it('resolves ancestors at depth by following parents, not by re-walking', () => {
+    // A chain deep enough that a per-node traversal would be visibly quadratic.
+    const deep = Array.from({ length: 200 }, (_, i) => i + 1).reduceRight<VtexCategoryNode[]>(
+      (children, id) => [node(id, `c${id}`, `https://shop.example/c${id}`, children)],
+      []
+    );
+
+    expect(ancestorsOf(deep, 200).map((n) => n.id)).toEqual(
+      Array.from({ length: 199 }, (_, i) => i + 1)
+    );
+    expect(ancestorsOf(deep, 1)).toEqual([]);
+    expect(categoryPathOf(deep, 3)).toBe('1/2/3');
+  });
+
+  it('keeps two trees apart rather than answering from the first one seen', () => {
+    const other: VtexCategoryNode[] = [node(99, 'Andere', 'https://shop.example/andere')];
+    expect(findById(tree, 4)?.name).toBe('Sneaker');
+    expect(findById(other, 4)).toBeUndefined();
+    expect(findById(other, 99)?.name).toBe('Andere');
+  });
+});

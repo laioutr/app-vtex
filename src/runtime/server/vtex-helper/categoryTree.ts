@@ -20,29 +20,70 @@ export interface VtexCategoryNode {
 export const slugFromUrl = (url: string): string =>
   url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/+|\/+$/g, '');
 
-export const flatten = (nodes: VtexCategoryNode[]): VtexCategoryNode[] =>
-  nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);
+interface CategoryIndex {
+  flat: VtexCategoryNode[];
+  byId: Map<number, VtexCategoryNode>;
+  bySlug: Map<string, VtexCategoryNode>;
+  parentOf: Map<number, VtexCategoryNode>;
+}
+
+/**
+ * Derived once per tree and held against the tree itself, so the lookups below cost a map read
+ * rather than a fresh traversal each. Every handler resolves the tree once and then asks about it
+ * repeatedly — a category per listed product, a node per menu item — which without this is a walk
+ * of the whole tree per question. Keyed weakly because the entry is worthless once the tree it
+ * describes is gone, and safe because nothing mutates a tree after it is fetched.
+ */
+const indexes = new WeakMap<VtexCategoryNode[], CategoryIndex>();
+
+const indexOf = (nodes: VtexCategoryNode[]): CategoryIndex => {
+  const existing = indexes.get(nodes);
+  if (existing) return existing;
+
+  const index: CategoryIndex = {
+    flat: [],
+    byId: new Map(),
+    bySlug: new Map(),
+    parentOf: new Map(),
+  };
+
+  const visit = (current: VtexCategoryNode[], parent?: VtexCategoryNode) => {
+    for (const node of current) {
+      index.flat.push(node);
+      index.byId.set(node.id, node);
+      // First writer wins, matching the find() this replaces.
+      if (!index.bySlug.has(slugFromUrl(node.url))) index.bySlug.set(slugFromUrl(node.url), node);
+      if (parent) index.parentOf.set(node.id, parent);
+
+      visit(node.children ?? [], node);
+    }
+  };
+
+  visit(nodes);
+  indexes.set(nodes, index);
+
+  return index;
+};
+
+/** A copy, because callers have always been free to sort or splice what they get back. */
+export const flatten = (nodes: VtexCategoryNode[]): VtexCategoryNode[] => [...indexOf(nodes).flat];
 
 export const findBySlug = (nodes: VtexCategoryNode[], slug: string) =>
-  flatten(nodes).find((n) => slugFromUrl(n.url) === slug);
+  indexOf(nodes).bySlug.get(slug);
 
-export const findById = (nodes: VtexCategoryNode[], id: number) =>
-  flatten(nodes).find((n) => n.id === id);
+export const findById = (nodes: VtexCategoryNode[], id: number) => indexOf(nodes).byId.get(id);
 
-/** Walks the tree once rather than issuing a request per ancestor. */
+/** Follows the parent chain, so the cost is the node's depth rather than the size of the tree. */
 export const ancestorsOf = (nodes: VtexCategoryNode[], id: number): VtexCategoryNode[] => {
-  const walk = (
-    current: VtexCategoryNode[],
-    trail: VtexCategoryNode[]
-  ): VtexCategoryNode[] | undefined => {
-    for (const n of current) {
-      if (n.id === id) return trail;
-      const hit = walk(n.children ?? [], [...trail, n]);
-      if (hit) return hit;
-    }
-    return undefined;
-  };
-  return walk(nodes, []) ?? [];
+  const { byId, parentOf } = indexOf(nodes);
+  if (!byId.has(id)) return [];
+
+  const trail: VtexCategoryNode[] = [];
+  for (let parent = parentOf.get(id); parent; parent = parentOf.get(parent.id)) {
+    trail.unshift(parent);
+  }
+
+  return trail;
 };
 
 /**
