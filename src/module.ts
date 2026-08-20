@@ -18,6 +18,10 @@ export interface ModuleOptions {
   appToken: string;
   /** Sales channel ("trade policy") to scope catalog and checkout reads to. */
   salesChannel: string;
+  /** Market slug -> VTEX sales channel id. Falls back to {@link ModuleOptions.salesChannel}. */
+  salesChannelByMarket?: Record<string, string>;
+  /** Which search backend to use. Intelligent Search requires an active VTEX IO store. */
+  searchProvider: 'legacy' | 'intelligent';
 }
 
 /**
@@ -46,6 +50,7 @@ export default defineNuxtModule<ModuleOptions>({
     appKey: '',
     appToken: '',
     salesChannel: '1',
+    searchProvider: 'legacy',
   },
   async setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);
