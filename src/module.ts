@@ -7,12 +7,27 @@ import { name, version } from '../package.json';
 /**
  * The options the module adds to the nuxt.config.ts.
  */
-export interface ModuleOptions {}
+export interface ModuleOptions {
+  /** VTEX account name — the store's subdomain on the VTEX platform. */
+  accountName: string;
+  /** Which VTEX environment to address. Production stores use `vtexcommercestable`. */
+  environment: 'vtexcommercestable' | 'myvtex';
+  /** Application key for server-to-server calls, sent as `X-VTEX-API-AppKey`. */
+  appKey: string;
+  /** Application token for server-to-server calls, sent as `X-VTEX-API-AppToken`. */
+  appToken: string;
+  /** Sales channel ("trade policy") to scope catalog and checkout reads to. */
+  salesChannel: string;
+}
 
 /**
  * The config the module adds to nuxt.runtimeConfig.public['@laioutr/app-vtex']
+ *
+ * Carries only values that are safe to ship to the browser. `appKey` and `appToken` are
+ * deliberately absent — they authenticate server-to-server calls and would be readable by
+ * anyone if exposed here.
  */
-export interface RuntimeConfigModulePublic {}
+export interface RuntimeConfigModulePublic extends Pick<ModuleOptions, 'accountName' | 'environment' | 'salesChannel'> {}
 
 /**
  * The config the module adds to nuxt.runtimeConfig['@laioutr/app-vtex']
@@ -25,18 +40,27 @@ export default defineNuxtModule<ModuleOptions>({
     version,
     configKey: name, // configKey must match package name
   },
-  // Default configuration options of the Nuxt module
-  defaults: {},
-  async setup(_options, nuxt) {
+  defaults: {
+    accountName: '',
+    environment: 'vtexcommercestable',
+    appKey: '',
+    appToken: '',
+    salesChannel: '1',
+  },
+  async setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);
     const resolveRuntimeModule = (path: string) => resolve('./runtime', path);
 
     nuxt.options.build.transpile.push(resolve('./runtime'));
 
-    // Runtime configuration for this module
-    // These two statements can be removed if you don't provide a runtime config
-    nuxt.options.runtimeConfig[name] = defu(nuxt.options.runtimeConfig[name] as Parameters<typeof defu>[0], _options);
-    nuxt.options.runtimeConfig.public[name] = defu(nuxt.options.runtimeConfig.public[name] as Parameters<typeof defu>[0], _options);
+    nuxt.options.runtimeConfig[name] = defu(nuxt.options.runtimeConfig[name] as Parameters<typeof defu>[0], options);
+
+    const { accountName, environment, salesChannel } = options;
+    nuxt.options.runtimeConfig.public[name] = defu(nuxt.options.runtimeConfig.public[name] as Parameters<typeof defu>[0], {
+      accountName,
+      environment,
+      salesChannel,
+    });
 
     await registerLaioutrApp({
       name,

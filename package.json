@@ -1,6 +1,6 @@
 {
   "name": "@laioutr/app-vtex",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Laioutr integration with VTEX",
   "repository": "github:laioutr/app-vtex",
   "license": "MIT",
@@ -22,8 +22,12 @@
   },
   "files": [
     "dist"
-],
-"scripts": {
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
     "dev": "npm run dev:prepare && nuxi dev playground",
     "dev:build": "nuxi build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
@@ -67,7 +71,9 @@
   "peerDependencies": {
     "@laioutr-core/canonical-types": ">=0.26.2",
     "@laioutr-core/core-types": ">=0.37.1",
-    "@laioutr-core/frontend-core": ">=0.37.1"
+    "@laioutr-core/frontend-core": ">=0.37.1",
+    "@laioutr-core/kit": ">=0.37.1",
+    "@laioutr-core/orchestr": ">=0.37.1"
   },
   "engines": {
     "node": ">=22.12.0",
