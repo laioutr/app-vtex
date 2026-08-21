@@ -1,7 +1,7 @@
 import { parseCookies } from 'h3';
 import { defineOrchestr, setManagedCookie, useRuntimeConfig } from '#imports';
 import { name } from '../../../../package.json';
-import { parseVtexSetCookie } from '../client/cookies';
+import { canWriteCookie, parseVtexSetCookie } from '../client/cookies';
 import { resolveSalesChannel } from '../client/salesChannel';
 import { createVtexClient } from '../client/vtexClientFactory';
 
@@ -22,6 +22,7 @@ export const defineVtex = defineOrchestr
     };
 
     const salesChannel = resolveSalesChannel(args.clientEnv.market, config);
+    const requestCookies = parseCookies(args.event);
 
     const vtexClient = createVtexClient({
       accountName: config.accountName,
@@ -29,10 +30,21 @@ export const defineVtex = defineOrchestr
       appKey: config.appKey,
       appToken: config.appToken,
       salesChannel,
-      cookies: parseCookies(args.event),
+      cookies: requestCookies,
       onSetCookie: (raw) => {
         const cookie = parseVtexSetCookie(raw, config.accountName);
         if (!cookie) return;
+
+        // VTEX re-sends the cookies it already has on nearly every response, so a write we cannot
+        // make is only a lost refresh — unless the value changed, which only an action can cause.
+        if (!canWriteCookie(args.event)) {
+          if (requestCookies[cookie.name] !== cookie.value) {
+            console.warn(
+              `[app-vtex] response already sent; dropping a changed ${cookie.name} cookie`
+            );
+          }
+          return;
+        }
 
         // `sameSite: 'lax'` rather than 'strict': the shopper returns from VTEX's checkout domain
         // on a top-level GET, which 'strict' would strip the cart cookie from.

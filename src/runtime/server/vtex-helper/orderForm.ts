@@ -35,19 +35,13 @@ export const createOrderForm = (client: VtexClient): Promise<VtexOrderForm> =>
   });
 
 /**
- * A 404 means the cart expired upstream, which is knowledge rather than failure — the caller clears
- * the cookie. Every other status rethrows: an empty cart shown to a shopper who has three items
- * invites them to add everything twice.
+ * A 404 means the cart expired upstream, which is knowledge rather than failure. Every other status
+ * rethrows: an empty cart shown to a shopper who has three items invites them to add everything
+ * twice.
  */
-export const readOrderForm = async (
-  client: VtexClient,
-  id: string
-): Promise<VtexOrderForm | undefined> => {
+const forgetOn404 = async <T>(id: string, read: () => Promise<T>): Promise<T | undefined> => {
   try {
-    return await client.publicFetch<VtexOrderForm>(
-      'checkout',
-      `/api/checkout/pub/orderForm/${encodeURIComponent(id)}`
-    );
+    return await read();
   } catch (error) {
     if (error instanceof VtexApiError && error.status === 404) {
       console.warn(`[app-vtex] orderForm ${id} is gone upstream; treating the shopper as cartless`);
@@ -56,6 +50,17 @@ export const readOrderForm = async (
     throw error;
   }
 };
+
+export const readOrderForm = (
+  client: VtexClient,
+  id: string
+): Promise<VtexOrderForm | undefined> =>
+  forgetOn404(id, () =>
+    client.publicFetch<VtexOrderForm>(
+      'checkout',
+      `/api/checkout/pub/orderForm/${encodeURIComponent(id)}`
+    )
+  );
 
 /**
  * Messages persist on an orderForm until something clears them, so a mutation that read them
@@ -68,6 +73,16 @@ export const clearMessagesAndRead = (client: VtexClient, id: string): Promise<Vt
     `/api/checkout/pub/orderForm/${encodeURIComponent(id)}/messages/clear`,
     { method: 'POST', body: '{}' }
   );
+
+/**
+ * The add path's read. A cookie naming a cart VTEX has since dropped must not fail the add: the
+ * shopper gets a fresh cart, whose own `Set-Cookie` replaces the dead one. Update and remove use
+ * the unguarded read instead, because there is no sensible cart to apply them to.
+ */
+export const clearMessagesOrForget = (
+  client: VtexClient,
+  id: string
+): Promise<VtexOrderForm | undefined> => forgetOn404(id, () => clearMessagesAndRead(client, id));
 
 export const indexByUniqueId = (orderForm: VtexOrderForm): Map<string, number> =>
   new Map(orderForm.items.map((line, index) => [line.uniqueId, index]));

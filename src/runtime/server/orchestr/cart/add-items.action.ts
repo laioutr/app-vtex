@@ -6,7 +6,7 @@ import { CHECKOUT_ORDER_FORM } from '../../client/cookies';
 import { defineVtexAction } from '../../middleware/defineVtex';
 import { defaultSellerIdOf } from '../../vtex-helper/mappers/product';
 import {
-  clearMessagesAndRead,
+  clearMessagesOrForget,
   createOrderForm,
   parseOrderFormId,
   toBatchResults,
@@ -31,9 +31,8 @@ export default defineVtexAction(CartAddItemsAction, async ({ input, context, eve
   // already forwards it to the managed-cookie writer.
   const existingId = parseOrderFormId(getCookie(event, CHECKOUT_ORDER_FORM));
   const before =
-    existingId ?
-      await clearMessagesAndRead(vtexClient, existingId)
-    : await createOrderForm(vtexClient);
+    (existingId ? await clearMessagesOrForget(vtexClient, existingId) : undefined) ??
+    (await createOrderForm(vtexClient));
 
   // One search for every row: VTEX refuses an add with no seller, and the canonical input has no
   // field for one. A wholesale failure here throws rather than falling back, because every

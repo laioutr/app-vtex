@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { indexByUniqueId, parseOrderFormId, toBatchResults, toOrderItemUpdates } from './orderForm';
+import {
+  clearMessagesOrForget,
+  indexByUniqueId,
+  parseOrderFormId,
+  readOrderForm,
+  toBatchResults,
+  toOrderItemUpdates,
+} from './orderForm';
+import type { VtexClient } from '../client/types';
 import type { VtexOrderForm, VtexOrderFormItem } from '../types/vtexCheckout';
+import { VtexApiError } from '../client/types';
 
 const item = (over: Partial<VtexOrderFormItem>): VtexOrderFormItem => ({
   uniqueId: 'U1',
@@ -126,5 +135,25 @@ describe('toBatchResults', () => {
     const before = orderForm([item({ quantity: 1 })]);
     const after = orderForm([item({ quantity: 3 })]);
     expect(toBatchResults(requested, before, after)[0]).toMatchObject({ quantity: 2 });
+  });
+});
+
+const clientThatFails = (status: number): VtexClient =>
+  ({
+    publicFetch: () => Promise.reject(new VtexApiError(status, 'checkout', '/orderForm', null)),
+  }) as unknown as VtexClient;
+
+describe('reads of a cart VTEX no longer has', () => {
+  it('treats a 404 as a cartless shopper rather than an error', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(readOrderForm(clientThatFails(404), 'OF1')).resolves.toBeUndefined();
+    await expect(clearMessagesOrForget(clientThatFails(404), 'OF1')).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('OF1'));
+    warn.mockRestore();
+  });
+
+  it('rethrows anything else, so a cart with items is never shown as empty', async () => {
+    await expect(readOrderForm(clientThatFails(500), 'OF1')).rejects.toThrow(VtexApiError);
+    await expect(clearMessagesOrForget(clientThatFails(500), 'OF1')).rejects.toThrow(VtexApiError);
   });
 });

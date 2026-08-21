@@ -1,4 +1,5 @@
 import { parseSetCookie } from 'cookie-es';
+import type { H3Event } from 'h3';
 
 export const VTEX_SESSION = 'vtex_session';
 export const VTEX_SEGMENT = 'vtex_segment';
@@ -51,3 +52,10 @@ export const parseVtexSetCookie = (
 
   return { name: parsed.name, value: parsed.value, expires: parsed.expires };
 };
+
+/**
+ * Orchestr streams a query's response, so a query handler runs after its headers are already gone
+ * and writing a cookie there throws — taking the whole query with it. Actions run to completion
+ * before their stream opens, which is where the cart cookie is actually minted.
+ */
+export const canWriteCookie = (event: H3Event): boolean => !event.handled;

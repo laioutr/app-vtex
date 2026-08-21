@@ -1,6 +1,6 @@
 import { deleteManagedCookie, getCookie } from '#imports';
 import { GetCurrentCartQuery } from '@laioutr-core/canonical-types/ecommerce';
-import { CHECKOUT_ORDER_FORM } from '../../client/cookies';
+import { canWriteCookie, CHECKOUT_ORDER_FORM } from '../../client/cookies';
 import { orderFormToken } from '../../const/passthroughTokens';
 import { defineVtexQuery } from '../../middleware/defineVtex';
 import { parseOrderFormId, readOrderForm } from '../../vtex-helper/orderForm';
@@ -14,7 +14,9 @@ export default defineVtexQuery(GetCurrentCartQuery, async ({ context, event, pas
 
   const orderForm = await readOrderForm(context.vtexClient, orderFormId);
   if (!orderForm) {
-    deleteManagedCookie(event, CHECKOUT_ORDER_FORM, { path: '/' });
+    // Orchestr streams a query, so its headers are usually gone by now. A cookie left behind is
+    // replaced by the fresh cart the next add mints, so this is a tidy-up rather than the fix.
+    if (canWriteCookie(event)) deleteManagedCookie(event, CHECKOUT_ORDER_FORM, { path: '/' });
     return { id: undefined };
   }
 
