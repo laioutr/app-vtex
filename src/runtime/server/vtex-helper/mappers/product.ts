@@ -13,6 +13,23 @@ export interface VtexImage {
   imageLabel?: string | null;
 }
 
+export interface VtexSeller {
+  sellerId?: string;
+  sellerDefault?: boolean;
+  commertialOffer: VtexCommertialOffer;
+}
+
+/**
+ * The offer the storefront transacts against. A marketplace SKU carries one offer per seller and
+ * VTEX flags which is the default; without that flag the order is arbitrary.
+ */
+export const defaultOfferOf = (item: {
+  sellers?: VtexSeller[];
+}): VtexCommertialOffer | undefined => {
+  const sellers = item.sellers ?? [];
+  return (sellers.find((seller) => seller.sellerDefault) ?? sellers[0])?.commertialOffer;
+};
+
 export interface VtexItem {
   itemId: string;
   name: string;
@@ -21,7 +38,7 @@ export interface VtexItem {
   /** Step size the SKU is sold in; a six-pack carries 6. */
   unitMultiplier?: number;
   images?: VtexImage[];
-  sellers?: { commertialOffer: VtexCommertialOffer }[];
+  sellers?: VtexSeller[];
   /**
    * Names of the SKU's option axes. Each name is also a key on this item holding its values, so
    * the axes can only be read by looking the names back up.
@@ -63,7 +80,7 @@ const imagesOf = (product: VtexProduct): VtexImage[] =>
 /** One offer per SKU, from the seller the storefront transacts against. */
 const offersOf = (product: VtexProduct): VtexCommertialOffer[] =>
   product.items.flatMap((item) => {
-    const offer = item.sellers?.[0]?.commertialOffer;
+    const offer = defaultOfferOf(item);
     return offer ? [offer] : [];
   });
 
@@ -161,7 +178,7 @@ export const toProductOptionGroups = (product: VtexProduct) => {
   const axes = new Map<string, Map<string, { variantId: string; available: boolean }>>();
 
   for (const item of product.items) {
-    const available = (item.sellers?.[0]?.commertialOffer?.AvailableQuantity ?? 0) > 0;
+    const available = (defaultOfferOf(item)?.AvailableQuantity ?? 0) > 0;
 
     for (const axis of item.variations ?? []) {
       const values = item[axis];

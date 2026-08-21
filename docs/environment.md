@@ -107,6 +107,28 @@ Nothing else on the account was modified.
   id and still have no listing presence for a while.
 - Writes to this account **fail transiently with an empty 500** and succeed on retry — seen on
   specification and file creation. Retry before treating one as a real failure.
+### Official API types
+
+VTEX publishes OpenAPI 3.0 schemas at [`vtex/openapi-schemas`](https://github.com/vtex/openapi-schemas),
+synced to the developer portal. `VTEX - Search API.json` is the Legacy Search surface this app reads,
+and its response schemas are fully typed down to `sellers[].commertialOffer`. It is a far better
+source than the hand-written interfaces in `vtex-helper/mappers/`, and `openapi-typescript` can
+generate from it — the same shape `app-shopware` gets from `@shopware/api-client`.
+
+Two caveats before trusting a generated type outright:
+
+- **The spec is behind the API.** `variations` — the SKU option axes the whole option-group mapping
+  reads — is returned by the live API and documented nowhere in the schema. A generated type needs
+  augmenting, not merely adopting.
+- **The npm SDKs are not an option.** `@vtex/clients` peer-depends on `@vtex/api` 6.x while that
+  package ships 7.4.2, and `@vtex/api` is a VTEX IO server runtime pulling koa, archiver, tar-fs,
+  bluebird, graphql 14 and a `github:` dependency. It is for building IO apps, not for reading a
+  catalog from outside.
+
+The spec is worth reading even where it is not generated from: `sellers[].sellerDefault` is
+documented there and present in live responses, which is how a marketplace SKU names the offer the
+storefront transacts against rather than whichever seller happens to come first.
+
 ### GraphQL is available on this account
 
 `POST /api/io/_v/public/graphql/v1` is live and answers with `AppKey`/`AppToken` auth. Three VTEX IO

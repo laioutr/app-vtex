@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  toVariantAvailability,
   toVariantComponents,
+  toVariantPrices,
   toVariantQuantityPrices,
   toVariantQuantityRule,
   toVariantShipping,
@@ -93,5 +95,25 @@ describe('quantity and shipping', () => {
 
   it('requires shipping, since a VTEX SKU is a physical good', () => {
     expect(toVariantShipping()).toEqual({ required: true });
+  });
+});
+
+describe('seller selection', () => {
+  const multiSeller = {
+    ...item,
+    sellers: [
+      { sellerId: '2', sellerDefault: false, commertialOffer: { Price: 99.99, ListPrice: null, AvailableQuantity: 1 } },
+      { sellerId: '1', sellerDefault: true, commertialOffer: { Price: 49.99, ListPrice: null, AvailableQuantity: 4 } },
+    ],
+  };
+
+  it('reads the offer from the seller VTEX marks default, not the first listed', () => {
+    expect(toVariantPrices(multiSeller, 'EUR')!.price.getAmount()).toBe(4999);
+    expect(toVariantAvailability(multiSeller).quantity).toBe(4);
+  });
+
+  it('falls back to the first seller when none is marked default', () => {
+    const unmarked = { ...item, sellers: [multiSeller.sellers[0]] };
+    expect(toVariantPrices(unmarked, 'EUR')!.price.getAmount()).toBe(9999);
   });
 });

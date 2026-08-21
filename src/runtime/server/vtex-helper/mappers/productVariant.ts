@@ -1,4 +1,4 @@
-import type { VtexItem } from './product';
+import { defaultOfferOf, type VtexItem } from './product';
 import type { MediaImage } from '@laioutr-core/core-types/common';
 import { fromDecimal } from '../money';
 
@@ -44,12 +44,12 @@ export const toVariantOptions = (item: VtexItem) => {
 };
 
 export const toVariantAvailability = (item: VtexItem) => {
-  const quantity = item.sellers?.[0]?.commertialOffer?.AvailableQuantity ?? 0;
+  const quantity = defaultOfferOf(item)?.AvailableQuantity ?? 0;
   return { status: quantity > 0 ? ('inStock' as const) : ('outOfStock' as const), quantity };
 };
 
 export const toVariantPrices = (item: VtexItem, currency: string) => {
-  const offer = item.sellers?.[0]?.commertialOffer;
+  const offer = defaultOfferOf(item);
   if (!offer) return undefined;
 
   const price = fromDecimal(offer.Price, currency);
