@@ -1,4 +1,4 @@
-import type { Media, MediaImage } from '@laioutr-core/core-types/common';
+import { toCatalogImage, toCatalogImages } from './media';
 import { fromDecimal } from '../money';
 
 export interface VtexCommertialOffer {
@@ -77,13 +77,6 @@ export interface VtexProduct {
   [specification: string]: unknown;
 }
 
-const toMediaImage = (image: VtexImage): MediaImage => ({
-  type: 'image',
-  alt: image.imageText || image.imageLabel || undefined,
-  // VTEX resizes on its own CDN; the provider turns a requested size into the right URL.
-  sources: [{ provider: 'vtex', src: image.imageUrl }],
-});
-
 const imagesOf = (product: VtexProduct): VtexImage[] =>
   product.items.flatMap((item) => item.images ?? []);
 
@@ -147,13 +140,10 @@ export const toProductBase = (product: VtexProduct) => ({
   slug: product.linkText,
 });
 
-export const toProductMedia = (product: VtexProduct) => {
-  const images = imagesOf(product).map(toMediaImage);
-  return { images, media: images as Media[] };
-};
+export const toProductMedia = (product: VtexProduct) => toCatalogImages(imagesOf(product));
 
 export const toProductInfo = (product: VtexProduct) => {
-  const cover = imagesOf(product).map(toMediaImage)[0];
+  const cover = imagesOf(product).map(toCatalogImage)[0];
 
   return {
     ...(cover ? { cover } : {}),

@@ -1,16 +1,11 @@
+import { toCatalogImage } from './media';
 import { defaultOfferOf, type VtexItem } from './product';
 import type { MediaImage } from '@laioutr-core/core-types/common';
 import { fromDecimal } from '../money';
 
 const toMediaImage = (item: VtexItem): MediaImage | undefined => {
   const image = item.images?.[0];
-  if (!image) return undefined;
-
-  return {
-    type: 'image',
-    alt: image.imageText || image.imageLabel || undefined,
-    sources: [{ provider: 'vtex', src: image.imageUrl }],
-  };
+  return image ? toCatalogImage(image) : undefined;
 };
 
 /** VTEX names the axes in `variations` and parks their values under matching keys on the item. */

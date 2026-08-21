@@ -1,3 +1,4 @@
+import { toVtexImage } from './media';
 import type { VtexOrderForm, VtexOrderFormItem } from '../../types/vtexCheckout';
 import type { Link, MediaImage } from '@laioutr-core/core-types/common';
 import type { Money } from '@screeny05/ts-money';
@@ -70,13 +71,7 @@ const toProductLink = (line: VtexOrderFormItem): Link | undefined => {
 };
 
 const toCover = (line: VtexOrderFormItem): MediaImage | undefined =>
-  line.imageUrl ?
-    {
-      type: 'image',
-      alt: line.name,
-      sources: [{ provider: 'vtex', src: normalizeImageUrl(line.imageUrl) }],
-    }
-  : undefined;
+  line.imageUrl ? toVtexImage(normalizeImageUrl(line.imageUrl), line.name) : undefined;
 
 export const toCartItemBase = (line: VtexOrderFormItem) => ({
   type: 'product' as const,
