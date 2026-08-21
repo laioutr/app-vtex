@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { toVariantComponents } from './productVariant';
+import {
+  toVariantComponents,
+  toVariantQuantityPrices,
+  toVariantQuantityRule,
+  toVariantShipping,
+} from './productVariant';
 import type { VtexItem } from './product';
 
 const item: VtexItem = {
@@ -66,5 +71,27 @@ describe('toVariantComponents', () => {
 
   it('yields no prices for a SKU no seller offers', () => {
     expect(toVariantComponents({ ...item, sellers: [] }, 'EUR').prices).toBeUndefined();
+  });
+});
+
+describe('quantity and shipping', () => {
+  it('has no wholesale tiers, which is an answer rather than a gap', () => {
+    expect(toVariantQuantityPrices()).toEqual([]);
+  });
+
+  it('takes the order step from the SKU unit multiplier', () => {
+    expect(toVariantQuantityRule({ ...item, unitMultiplier: 6 })).toEqual({
+      min: 6,
+      increment: 6,
+    });
+  });
+
+  it('falls back to single units when VTEX gives no multiplier', () => {
+    expect(toVariantQuantityRule(item)).toEqual({ min: 1, increment: 1 });
+    expect(toVariantQuantityRule({ ...item, unitMultiplier: 0 })).toEqual({ min: 1, increment: 1 });
+  });
+
+  it('requires shipping, since a VTEX SKU is a physical good', () => {
+    expect(toVariantShipping()).toEqual({ required: true });
   });
 });

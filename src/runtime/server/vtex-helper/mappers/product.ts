@@ -18,6 +18,8 @@ export interface VtexItem {
   name: string;
   nameComplete?: string;
   ean?: string | null;
+  /** Step size the SKU is sold in; a six-pack carries 6. */
+  unitMultiplier?: number;
   images?: VtexImage[];
   sellers?: { commertialOffer: VtexCommertialOffer }[];
   /**
@@ -183,6 +185,15 @@ export const toProductOptionGroups = (product: VtexProduct) => {
       values: [...values].map(([value, meta]) => ({ value, ...meta })),
     })),
   };
+};
+
+/**
+ * The SKU a detail page opens on. VTEX names a default in its search index but not in any public
+ * response, so the first item stands in — which is the order VTEX returns SKUs in anyway.
+ */
+export const toProductDefaultVariant = (product: VtexProduct) => {
+  const first = product.items[0];
+  return first ? { id: first.itemId } : {};
 };
 
 /** Every component at once. Convenient for a suite; a resolver should reach for the parts. */

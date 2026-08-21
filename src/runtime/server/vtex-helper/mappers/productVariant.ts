@@ -72,6 +72,28 @@ export const toVariantPrices = (item: VtexItem, currency: string) => {
   };
 };
 
+/**
+ * VTEX prices a SKU singly; wholesale tiers are a Pricing-API feature this catalog does not use, so
+ * the honest answer is that there are none — not that the component is unknown.
+ */
+export const toVariantQuantityPrices = () => [];
+
+/**
+ * `unitMultiplier` is VTEX's own step size: a SKU sold in packs of six carries 6, and the shopper
+ * may only buy multiples of it.
+ */
+export const toVariantQuantityRule = (item: VtexItem) => {
+  const increment = typeof item.unitMultiplier === 'number' && item.unitMultiplier > 0 ? item.unitMultiplier : 1;
+  return { min: increment, increment };
+};
+
+/**
+ * Every SKU in a VTEX catalog is a physical good unless it is marked otherwise, and the public
+ * search exposes no such marker. Rate and forecast need a cart and an address, so they belong to
+ * checkout rather than to a catalog read.
+ */
+export const toVariantShipping = () => ({ required: true });
+
 /** Every component at once. Convenient for a suite; a resolver should reach for the parts. */
 export const toVariantComponents = (item: VtexItem, currency: string) => ({
   base: toVariantBase(item),
@@ -79,4 +101,7 @@ export const toVariantComponents = (item: VtexItem, currency: string) => ({
   options: toVariantOptions(item),
   availability: toVariantAvailability(item),
   prices: toVariantPrices(item, currency),
+  quantityPrices: toVariantQuantityPrices(),
+  quantityRule: toVariantQuantityRule(item),
+  shipping: toVariantShipping(),
 });

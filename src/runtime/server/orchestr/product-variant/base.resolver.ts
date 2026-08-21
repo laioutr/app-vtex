@@ -2,6 +2,9 @@ import {
   ProductVariantBase,
   ProductVariantInfo,
   ProductVariantOptions,
+  ProductVariantQuantityPrices,
+  ProductVariantQuantityRule,
+  ProductVariantShipping,
 } from '@laioutr-core/canonical-types/entity/product-variant';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { loadVariants } from '../../vtex-helper/loadVariants';
@@ -9,6 +12,9 @@ import {
   toVariantBase,
   toVariantInfo,
   toVariantOptions,
+  toVariantQuantityPrices,
+  toVariantQuantityRule,
+  toVariantShipping,
 } from '../../vtex-helper/mappers/productVariant';
 
 export default defineVtexComponentResolver({
@@ -16,7 +22,14 @@ export default defineVtexComponentResolver({
   entityType: 'ProductVariant',
   // `prices` requires a price a SKU with no seller cannot supply, and `availability` changes far
   // faster than any of these, so both resolve separately.
-  provides: [ProductVariantBase, ProductVariantInfo, ProductVariantOptions],
+  provides: [
+    ProductVariantBase,
+    ProductVariantInfo,
+    ProductVariantOptions,
+    ProductVariantQuantityPrices,
+    ProductVariantQuantityRule,
+    ProductVariantShipping,
+  ],
   resolve: async ({ entityIds, context, passthrough, $entity }) => {
     const variants = await loadVariants(context.vtexClient, passthrough, entityIds);
 
@@ -31,6 +44,9 @@ export default defineVtexComponentResolver({
           base: () => toVariantBase(hit.item),
           info: () => toVariantInfo(hit.item),
           options: () => toVariantOptions(hit.item),
+          quantityPrices: () => toVariantQuantityPrices(),
+          quantityRule: () => toVariantQuantityRule(hit.item),
+          shipping: () => toVariantShipping(),
         }),
       ];
     });

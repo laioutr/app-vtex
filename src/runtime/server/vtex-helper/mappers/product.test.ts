@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { toProductComponents, toProductOptionGroups, type VtexProduct } from './product';
+import {
+  toProductComponents,
+  toProductDefaultVariant,
+  toProductOptionGroups,
+  type VtexProduct,
+} from './product';
 
 const product: VtexProduct = {
   productId: '146835',
@@ -193,5 +198,15 @@ describe('toProductOptionGroups', () => {
 
   it('yields no groups for a product VTEX declares no axes for', () => {
     expect(toProductOptionGroups(product).groups).toEqual([]);
+  });
+});
+
+describe('toProductDefaultVariant', () => {
+  it('opens on the first SKU, the order VTEX returns them in', () => {
+    expect(toProductDefaultVariant(product)).toEqual({ id: '146835' });
+  });
+
+  it('names no variant for a product with no SKUs', () => {
+    expect(toProductDefaultVariant({ ...product, items: [] })).toEqual({});
   });
 });

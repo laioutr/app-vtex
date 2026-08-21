@@ -1,23 +1,49 @@
-import { CategoryBase, CategorySeo } from '@laioutr-core/canonical-types/entity/category';
+import {
+  CategoryBase,
+  CategoryContent,
+  CategoryMedia,
+  CategorySeo,
+} from '@laioutr-core/canonical-types/entity/category';
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { findById, loadCategoryTree } from '../../vtex-helper/categoryTree';
-import { toCategoryComponents } from '../../vtex-helper/mappers/category';
+import { loadCategoryDescriptions } from '../../vtex-helper/loadCategoryDescriptions';
+import {
+  toCategoryBase,
+  toCategoryContent,
+  toCategoryMedia,
+  toCategorySeo,
+} from '../../vtex-helper/mappers/category';
 
 export default defineVtexComponentResolver({
   label: 'VTEX Category Connector',
   entityType: 'Category',
-  // The category tree carries no description, so `content` stays with whichever app has one.
-  provides: [CategoryBase, CategorySeo],
-  resolve: async ({ entityIds, context, $entity }) => {
+  provides: [CategoryBase, CategorySeo, CategoryContent, CategoryMedia],
+  resolve: async ({ entityIds, requestedComponents, context, $entity }) => {
     const tree = await loadCategoryTree(context.vtexClient);
 
-    const entities = entityIds.flatMap((id) => {
+    const nodes = entityIds.flatMap((id) => {
       const node = findById(tree, Number(id));
-      if (!node) return [];
-
-      const { base, seo } = toCategoryComponents(node);
-      return [$entity({ id, base: () => base, seo: () => seo })];
+      return node ? [{ id, node }] : [];
     });
+
+    // One admin read per category, so it is worth making only when the content component is asked
+    // for — a card grid requests base and media and must not pay for descriptions it never shows.
+    const descriptions = requestedComponents.includes('content')
+      ? await loadCategoryDescriptions(
+          context.vtexClient,
+          nodes.map(({ node }) => node.id)
+        )
+      : new Map<number, string>();
+
+    const entities = nodes.map(({ id, node }) =>
+      $entity({
+        id,
+        base: () => toCategoryBase(node),
+        seo: () => toCategorySeo(node),
+        content: () => toCategoryContent(descriptions.get(node.id)),
+        media: () => toCategoryMedia(),
+      })
+    );
 
     return { entities };
   },

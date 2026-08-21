@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toCategoryComponents } from './category';
+import { toCategoryComponents, toCategoryContent, toCategoryMedia } from './category';
 import type { VtexCategoryNode } from '../categoryTree';
 
 const node: VtexCategoryNode = {
@@ -36,5 +36,24 @@ describe('toCategoryComponents', () => {
     expect(toCategoryComponents({ ...node, MetaTagDescription: '' }).seo).not.toHaveProperty(
       'description'
     );
+  });
+});
+
+describe('toCategoryContent', () => {
+  it('carries the description VTEX holds on the admin record', () => {
+    expect(toCategoryContent('<p>Pantoletten für den Sommer.</p>').description.html).toBe(
+      '<p>Pantoletten für den Sommer.</p>'
+    );
+  });
+
+  it('is an empty fragment when no description was fetched, not a missing component', () => {
+    expect(toCategoryContent().description.html).toBe('');
+    expect(toCategoryContent(null).description.html).toBe('');
+  });
+});
+
+describe('toCategoryMedia', () => {
+  it('is empty, because VTEX models no imagery on a category', () => {
+    expect(toCategoryMedia()).toEqual({ media: [] });
   });
 });

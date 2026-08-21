@@ -1,6 +1,7 @@
 import {
   ProductBase,
   ProductBrand,
+  ProductDefaultVariant,
   ProductDescription,
   ProductMedia,
   ProductSeo,
@@ -11,6 +12,7 @@ import { loadProducts } from '../../vtex-helper/loadProducts';
 import {
   toProductBase,
   toProductBrand,
+  toProductDefaultVariant,
   toProductDescription,
   toProductMedia,
   toProductSeo,
@@ -24,6 +26,7 @@ export default defineVtexComponentResolver({
   // that a product without an image or an offer cannot supply, so they resolve separately.
   provides: [
     ProductBase,
+    ProductDefaultVariant,
     ProductDescription,
     ProductMedia,
     ProductSeo,
@@ -42,6 +45,7 @@ export default defineVtexComponentResolver({
         $entity({
           id,
           base: () => toProductBase(product),
+          defaultVariant: () => toProductDefaultVariant(product),
           description: () => toProductDescription(product),
           media: () => toProductMedia(product),
           seo: () => toProductSeo(product),
