@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   currencyOf,
-  normalizeImageUrl,
   slugFromDetailUrl,
   toCartBase,
   toCartCost,
@@ -49,20 +48,6 @@ describe('currencyOf', () => {
 
   it('is undefined when VTEX reports none', () => {
     expect(currencyOf(orderForm({ storePreferencesData: null }))).toBeUndefined();
-  });
-});
-
-describe('normalizeImageUrl', () => {
-  it('drops the thumbnail size VTEX bakes into the id segment', () => {
-    expect(normalizeImageUrl(item().imageUrl!)).toBe(
-      'https://x.vteximg.com.br/arquivos/ids/157422/756290-Rot.jpg?v=1'
-    );
-  });
-
-  it('leaves a url carrying no size alone', () => {
-    expect(normalizeImageUrl('https://x/arquivos/ids/157422/a.jpg')).toBe(
-      'https://x/arquivos/ids/157422/a.jpg'
-    );
   });
 });
 

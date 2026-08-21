@@ -11,11 +11,6 @@ import { tryFromMinorUnits } from '../money';
 export const currencyOf = (orderForm: VtexOrderForm): string | undefined =>
   orderForm.storePreferencesData?.currencyCode ?? undefined;
 
-const SIZED_ID_SEGMENT = /(\/arquivos\/ids\/\d+)-\d+-\d+/;
-
-/** An orderForm image is a 55px thumbnail; the image provider needs the unsized original. */
-export const normalizeImageUrl = (url: string): string => url.replace(SIZED_ID_SEGMENT, '$1');
-
 const DETAIL_PATH = /^\/?([^/?#]+)\/p(?:[?#].*)?$/;
 
 export const slugFromDetailUrl = (detailUrl: string | null | undefined): string | undefined =>
@@ -71,7 +66,7 @@ const toProductLink = (line: VtexOrderFormItem): Link | undefined => {
 };
 
 const toCover = (line: VtexOrderFormItem): MediaImage | undefined =>
-  line.imageUrl ? toVtexImage(normalizeImageUrl(line.imageUrl), line.name) : undefined;
+  line.imageUrl ? toVtexImage(line.imageUrl, line.name) : undefined;
 
 export const toCartItemBase = (line: VtexOrderFormItem) => ({
   type: 'product' as const,
