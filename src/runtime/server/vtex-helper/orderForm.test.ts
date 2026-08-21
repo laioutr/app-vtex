@@ -5,6 +5,7 @@ import {
   parseOrderFormId,
   readOrderForm,
   toBatchResults,
+  toOrderFormCookieValue,
   toOrderItemUpdates,
 } from './orderForm';
 import type { VtexClient } from '../client/types';
@@ -155,5 +156,11 @@ describe('reads of a cart VTEX no longer has', () => {
   it('rethrows anything else, so a cart with items is never shown as empty', async () => {
     await expect(readOrderForm(clientThatFails(500), 'OF1')).rejects.toThrow(VtexApiError);
     await expect(clearMessagesOrForget(clientThatFails(500), 'OF1')).rejects.toThrow(VtexApiError);
+  });
+});
+
+describe('toOrderFormCookieValue', () => {
+  it('round-trips through the parser, so a cart we write is a cart we can read', () => {
+    expect(parseOrderFormId(toOrderFormCookieValue('OF1'))).toBe('OF1');
   });
 });

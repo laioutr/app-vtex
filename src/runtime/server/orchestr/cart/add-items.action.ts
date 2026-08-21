@@ -10,6 +10,7 @@ import {
   createOrderForm,
   parseOrderFormId,
   toBatchResults,
+  toOrderFormCookieValue,
 } from '../../vtex-helper/orderForm';
 import { searchByIds } from '../../vtex-helper/searchByIds';
 
@@ -42,7 +43,7 @@ export default defineVtexAction(CartAddItemsAction, async ({ input, context, eve
   // only handler that can keep one — Orchestr streams a query's response before its handler runs.
   // VTEX's own `Set-Cookie` is ignored: it carries VTEX's domain, which the browser rejects here.
   if (!existing) {
-    setManagedCookie(event, CHECKOUT_ORDER_FORM, `__ofid=${before.orderFormId}`, {
+    setManagedCookie(event, CHECKOUT_ORDER_FORM, toOrderFormCookieValue(before.orderFormId), {
       httpOnly: true,
       path: '/',
       // Not 'strict': the shopper returns from VTEX's checkout domain on a top-level GET, which

@@ -6,6 +6,10 @@ import { VtexApiError } from '../client/types';
 
 const OFID_PREFIX = '__ofid=';
 
+/** The cookie value VTEX expects back: it keys the id rather than storing it bare. */
+export const toOrderFormCookieValue = (orderFormId: string): string =>
+  `${OFID_PREFIX}${orderFormId}`;
+
 /**
  * `canonical-types` ships no import path for this shape, so it is read back off the token that
  * defines it — which also means it cannot drift from what the action must return.
