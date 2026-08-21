@@ -1,6 +1,3 @@
-import { parseSetCookie } from 'cookie-es';
-import type { H3Event } from 'h3';
-
 export const VTEX_SESSION = 'vtex_session';
 export const VTEX_SEGMENT = 'vtex_segment';
 export const CHECKOUT_ORDER_FORM = 'checkout.vtex.com';
@@ -23,39 +20,3 @@ export const forwardableCookieHeader = (
 
 export const hasAuthCookie = (cookies: Record<string, string>, accountName: string) =>
   Boolean(cookies[authCookieName(accountName)]);
-
-export interface VtexCookieWrite {
-  name: string;
-  value: string;
-  expires?: Date;
-}
-
-/**
- * VTEX stamps its own domain on every `Set-Cookie`, which a browser rejects on the storefront's
- * origin. Only the name, value and expiry survive the trip; the remaining attributes are the
- * platform's to decide, so that a Studio preview frame gets the partitioned variant it needs.
- */
-export const parseVtexSetCookie = (
-  raw: string,
-  accountName: string
-): VtexCookieWrite | undefined => {
-  let parsed;
-  try {
-    parsed = parseSetCookie(raw);
-  } catch {
-    console.warn('[app-vtex] ignoring an unreadable Set-Cookie from VTEX');
-    return undefined;
-  }
-
-  const names = [VTEX_SESSION, VTEX_SEGMENT, CHECKOUT_ORDER_FORM, authCookieName(accountName)];
-  if (!parsed?.name || !parsed.value || !names.includes(parsed.name)) return undefined;
-
-  return { name: parsed.name, value: parsed.value, expires: parsed.expires };
-};
-
-/**
- * Orchestr streams a query's response, so a query handler runs after its headers are already gone
- * and writing a cookie there throws — taking the whole query with it. Actions run to completion
- * before their stream opens, which is where the cart cookie is actually minted.
- */
-export const canWriteCookie = (event: H3Event): boolean => !event.handled;

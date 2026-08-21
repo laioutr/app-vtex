@@ -1,4 +1,4 @@
-import { getCookie } from '#imports';
+import { getCookie, setManagedCookie } from '#imports';
 import { CartAddItemsAction } from '@laioutr-core/canonical-types/ecommerce';
 import type { VtexOrderForm, VtexOrderItemAdd } from '../../types/vtexCheckout';
 import type { CartBatchResultItem } from '../../vtex-helper/orderForm';
@@ -12,6 +12,13 @@ import {
   toBatchResults,
 } from '../../vtex-helper/orderForm';
 import { searchByIds } from '../../vtex-helper/searchByIds';
+
+/**
+ * VTEX keeps an orderForm well beyond a browsing session, and the cookie cannot govern that either
+ * way: outliving the cart costs one 404 that mints a replacement, and expiring early costs a cart
+ * the shopper still had. Six months matches what VTEX stamps on its own.
+ */
+const ORDER_FORM_COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
 export default defineVtexAction(CartAddItemsAction, async ({ input, context, event }) => {
   const { vtexClient, vtexSalesChannel } = context;
@@ -27,12 +34,23 @@ export default defineVtexAction(CartAddItemsAction, async ({ input, context, eve
 
   if (productRows.length === 0) return { items: unsupported };
 
-  // Creating one writes no cookie here on purpose: VTEX answers with a `Set-Cookie` and the client
-  // already forwards it to the managed-cookie writer.
   const existingId = parseOrderFormId(getCookie(event, CHECKOUT_ORDER_FORM));
-  const before =
-    (existingId ? await clearMessagesOrForget(vtexClient, existingId) : undefined) ??
-    (await createOrderForm(vtexClient));
+  const existing = existingId ? await clearMessagesOrForget(vtexClient, existingId) : undefined;
+  const before = existing ?? (await createOrderForm(vtexClient));
+
+  // Minting a cart is the only moment this app has a cookie worth keeping, and an action is the
+  // only handler that can keep one — Orchestr streams a query's response before its handler runs.
+  // VTEX's own `Set-Cookie` is ignored: it carries VTEX's domain, which the browser rejects here.
+  if (!existing) {
+    setManagedCookie(event, CHECKOUT_ORDER_FORM, `__ofid=${before.orderFormId}`, {
+      httpOnly: true,
+      path: '/',
+      // Not 'strict': the shopper returns from VTEX's checkout domain on a top-level GET, which
+      // 'strict' would strip the cart cookie from.
+      sameSite: 'lax',
+      maxAge: ORDER_FORM_COOKIE_MAX_AGE,
+    });
+  }
 
   // One search for every row: VTEX refuses an add with no seller, and the canonical input has no
   // field for one. A wholesale failure here throws rather than falling back, because every
