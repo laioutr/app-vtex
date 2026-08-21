@@ -107,6 +107,45 @@ Nothing else on the account was modified.
   id and still have no listing presence for a while.
 - Writes to this account **fail transiently with an empty 500** and succeed on retry — seen on
   specification and file creation. Retry before treating one as a real failure.
+### GraphQL is available on this account
+
+`POST /api/io/_v/public/graphql/v1` is live and answers with `AppKey`/`AppToken` auth. Three VTEX IO
+apps are mounted: `vtex.store-graphql@2.177.3`, `vtex.search-graphql@0.72.0` and
+`vtex.catalog-graphql@1.106.1`. The bare `/_v/public/graphql/v1` path 403s — only the `/api/io/`
+form works. Every query needs `@context(provider: "vtex.store-graphql")`, because several apps
+define `product` and the ambiguity is a 500.
+
+What works, verified:
+
+- `product(identifier: {field: id, value: "285"})` — `field` is an **enum**, so `id` is unquoted;
+  quoting it fails validation with no detail.
+- `productsByIdentifier(field: id, values: ["285", "305"])` — batch hydration by id, which is the
+  shape a component resolver needs.
+- `productSearch(query: "1", map: "c", from: 0, to: 9)` under the **store-graphql** provider, which
+  proxies Legacy Search.
+
+What does not, and why:
+
+- Anything under `vtex.search-graphql` — `productSearch`, `facets` — answers 400 through the proxy,
+  matching Intelligent Search being inactive on this account.
+- `products(category:)` answers 500. Introspection is disabled: `__schema` and `__type` both fail
+  validation, so the schema has to be probed by trial.
+
+Field selection is the reason to care. Measured over the same five products:
+
+| request | bytes |
+| --- | --- |
+| REST `products/search` | 140,827 |
+| GraphQL, every field the mappers read | 32,682 |
+| GraphQL, prices only | 2,234 |
+
+Errors arrive as **HTTP 200 with an `errors` array**, so a client that keys failure off the status
+code — as `VtexApiError` does — reads a failed query as success.
+
+**Unverified:** whether these queries honour the sales channel. Passing `salesChannel` to
+`productSearch` was rejected, and nothing confirms the default scoping matches the REST `sc`
+parameter. Settle that before moving any read onto GraphQL.
+
 - Sales channels enumerate only on the **private** path: `GET /api/catalog_system/pvt/saleschannel/list`
   `[adminFetch]` returns 200, while the `pub` variant of that path does not exist and 404s.
   This account has exactly one channel: id `1`, "Main", `EUR`, active.
