@@ -142,9 +142,33 @@ Field selection is the reason to care. Measured over the same five products:
 Errors arrive as **HTTP 200 with an `errors` array**, so a client that keys failure off the status
 code — as `VtexApiError` does — reads a failed query as success.
 
-**Unverified:** whether these queries honour the sales channel. Passing `salesChannel` to
-`productSearch` was rejected, and nothing confirms the default scoping matches the REST `sc`
-parameter. Settle that before moving any read onto GraphQL.
+**Smaller is not faster.** Measured against a healthy account, 48 products, 10 interleaved reps:
+
+| request | median | bytes |
+| --- | --- | --- |
+| REST `products/search`, everything | 638 ms | 1,142,689 |
+| GraphQL, every field the mappers read | 1,017 ms | 255,012 |
+| GraphQL, prices and stock only | 651 ms | 32,053 |
+
+The IO hop costs roughly what the bandwidth saves. Fetching a thirty-sixth of the bytes lands
+within noise of the full REST response, and asking GraphQL for everything is materially *slower*
+than REST. So the case for GraphQL here is egress and the CPU spent parsing a megabyte per
+listing, not latency — do not expect a page to render faster for it.
+
+Timings taken from outside the datacenter, on an account a second session was also using; treat
+the ordering as sound and the absolute numbers as soft.
+
+**Sales channel: still unresolved, and it cannot be settled on this account.** What is established:
+the `sc` query parameter is **ignored** — `?sc=999`, a channel that does not exist, returns the
+same product at the same price as `?sc=1` and as no parameter at all — and `product` accepts no
+`salesChannel` argument. A hand-made `vtex_segment` cookie changed nothing either, but VTEX
+validates segment tokens, so that leg proves little.
+
+The account has exactly one channel, so "scopes to the default channel" and "does not scope"
+predict identical results; a per-product comparison against the `sc=1` REST search agreed on all
+20 products sampled, which distinguishes nothing. Settling it needs a second sales channel
+carrying a different price for one SKU. Until then, assume nothing about channel scoping before
+moving a read onto GraphQL.
 
 - Sales channels enumerate only on the **private** path: `GET /api/catalog_system/pvt/saleschannel/list`
   `[adminFetch]` returns 200, while the `pub` variant of that path does not exist and 404s.
