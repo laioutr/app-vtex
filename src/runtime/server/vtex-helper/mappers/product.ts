@@ -30,6 +30,16 @@ export const defaultOfferOf = (item: {
   return (sellers.find((seller) => seller.sellerDefault) ?? sellers[0])?.commertialOffer;
 };
 
+/**
+ * The seller an add-to-cart transacts against. A lone seller is unambiguous; several are only
+ * resolvable through VTEX's own flag, and guessing among them would decide the shopper's price.
+ */
+export const defaultSellerIdOf = (item: { sellers?: VtexSeller[] }): string | undefined => {
+  const sellers = item.sellers ?? [];
+  if (sellers.length === 1) return sellers[0]?.sellerId;
+  return sellers.find((seller) => seller.sellerDefault)?.sellerId;
+};
+
 export interface VtexItem {
   itemId: string;
   name: string;
