@@ -148,6 +148,43 @@ export const toProductPrices = toPrices;
 
 export const toProductSpecifications = toSpecifications;
 
+/**
+ * The option axes a product offers, aggregated across its SKUs — Size -> [41, 42], Farbe -> [Rot] —
+ * so a detail page can render a variant selector without loading every variant.
+ *
+ * `wellKnownName` is deliberately left unset. VTEX names an axis in whatever language the catalog
+ * was built in, so mapping "Farbe" onto `color` would hold for this account and break the next one.
+ */
+export const toProductOptionGroups = (product: VtexProduct) => {
+  const axes = new Map<string, Map<string, { variantId: string; available: boolean }>>();
+
+  for (const item of product.items) {
+    const available = (item.sellers?.[0]?.commertialOffer?.AvailableQuantity ?? 0) > 0;
+
+    for (const axis of item.variations ?? []) {
+      const values = item[axis];
+      if (!Array.isArray(values) || values.length === 0) continue;
+
+      const bucket = axes.get(axis) ?? new Map();
+      axes.set(axis, bucket);
+
+      for (const raw of values) {
+        const value = String(raw);
+        const seen = bucket.get(value);
+        // First SKU to offer a value names it; a purchasable one takes over from a sold-out one.
+        if (!seen || (!seen.available && available)) bucket.set(value, { variantId: item.itemId, available });
+      }
+    }
+  }
+
+  return {
+    groups: [...axes].map(([name, values]) => ({
+      name,
+      values: [...values].map(([value, meta]) => ({ value, ...meta })),
+    })),
+  };
+};
+
 /** Every component at once. Convenient for a suite; a resolver should reach for the parts. */
 export const toProductComponents = (product: VtexProduct, currency: string) => ({
   base: toProductBase(product),

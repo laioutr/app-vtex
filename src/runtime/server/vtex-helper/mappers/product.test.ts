@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toProductComponents, type VtexProduct } from './product';
+import { toProductComponents, toProductOptionGroups, type VtexProduct } from './product';
 
 const product: VtexProduct = {
   productId: '146835',
@@ -145,5 +145,53 @@ describe('toProductComponents', () => {
 
   it('carries the brand', () => {
     expect(toProductComponents(product, 'EUR').brand).toEqual({ name: 'FILA' });
+  });
+});
+
+describe('toProductOptionGroups', () => {
+  const sku = (itemId: string, farbe: string, groesse: string, qty: number) => ({
+    itemId,
+    name: `Sneaker ${farbe} ${groesse}`,
+    variations: ['Farbe', 'Groesse'],
+    Farbe: [farbe],
+    Groesse: [groesse],
+    sellers: [{ commertialOffer: { Price: 10, ListPrice: null, AvailableQuantity: qty } }],
+  });
+
+  const multi: VtexProduct = {
+    ...product,
+    items: [sku('1', 'Rot', '41', 5), sku('2', 'Blau', '42', 0), sku('3', 'Rot', '42', 7)],
+  };
+
+  it('aggregates each axis across the SKUs, in the order first seen', () => {
+    const { groups } = toProductOptionGroups(multi);
+    expect(groups.map((g) => g.name)).toEqual(['Farbe', 'Groesse']);
+    expect(groups[0].values.map((v) => v.value)).toEqual(['Rot', 'Blau']);
+    expect(groups[1].values.map((v) => v.value)).toEqual(['41', '42']);
+  });
+
+  it('points each value at a SKU that offers it', () => {
+    const farbe = toProductOptionGroups(multi).groups[0];
+    expect(farbe.values.find((v) => v.value === 'Rot')?.variantId).toBe('1');
+    expect(farbe.values.find((v) => v.value === 'Blau')?.variantId).toBe('2');
+  });
+
+  it('marks a value available when any SKU offering it is in stock', () => {
+    const groesse = toProductOptionGroups(multi).groups[1];
+    // 42 appears on a sold-out SKU first and a stocked one after; the stocked one wins.
+    expect(groesse.values.find((v) => v.value === '42')).toEqual({
+      value: '42',
+      variantId: '3',
+      available: true,
+    });
+  });
+
+  it('marks a value unavailable when every SKU offering it is sold out', () => {
+    const soldOut = { ...multi, items: [sku('1', 'Rot', '41', 0)] };
+    expect(toProductOptionGroups(soldOut).groups[0].values[0].available).toBe(false);
+  });
+
+  it('yields no groups for a product VTEX declares no axes for', () => {
+    expect(toProductOptionGroups(product).groups).toEqual([]);
   });
 });
