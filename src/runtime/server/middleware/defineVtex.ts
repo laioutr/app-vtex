@@ -1,6 +1,7 @@
-import { appendResponseHeader, parseCookies } from 'h3';
-import { defineOrchestr, useRuntimeConfig } from '#imports';
+import { parseCookies } from 'h3';
+import { defineOrchestr, setManagedCookie, useRuntimeConfig } from '#imports';
 import { name } from '../../../../package.json';
+import { parseVtexSetCookie } from '../client/cookies';
 import { resolveSalesChannel } from '../client/salesChannel';
 import { createVtexClient } from '../client/vtexClientFactory';
 
@@ -29,7 +30,19 @@ export const defineVtex = defineOrchestr
       appToken: config.appToken,
       salesChannel,
       cookies: parseCookies(args.event),
-      onSetCookie: (raw) => appendResponseHeader(args.event, 'set-cookie', raw),
+      onSetCookie: (raw) => {
+        const cookie = parseVtexSetCookie(raw, config.accountName);
+        if (!cookie) return;
+
+        // `sameSite: 'lax'` rather than 'strict': the shopper returns from VTEX's checkout domain
+        // on a top-level GET, which 'strict' would strip the cart cookie from.
+        setManagedCookie(args.event, cookie.name, cookie.value, {
+          httpOnly: true,
+          path: '/',
+          sameSite: 'lax',
+          expires: cookie.expires,
+        });
+      },
     });
 
     // Keys are namespaced: this object merges into a context shared by every installed app.
