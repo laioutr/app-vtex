@@ -2,6 +2,7 @@ import { SuggestedSearchEntryBase } from '@laioutr-core/canonical-types/entity/s
 import { defineVtexComponentResolver } from '../../middleware/defineVtex';
 import { findById, loadCategoryTree, slugFromUrl } from '../../vtex-helper/categoryTree';
 import { loadProducts } from '../../vtex-helper/loadProducts';
+import { toCatalogImage } from '../../vtex-helper/mappers/media';
 import { parseSuggestionId } from '../../vtex-helper/suggestedSearch';
 
 export default defineVtexComponentResolver({
@@ -46,15 +47,7 @@ export default defineVtexComponentResolver({
                   id: product.productId,
                 },
               },
-              ...(image
-                ? {
-                    cover: {
-                      type: 'image' as const,
-                      alt: image.imageText || image.imageLabel || undefined,
-                      sources: [{ provider: 'vtex', src: image.imageUrl }],
-                    },
-                  }
-                : {}),
+              ...(image ? { cover: toCatalogImage(image) } : {}),
             }),
           }),
         ];

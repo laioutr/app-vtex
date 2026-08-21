@@ -24,8 +24,6 @@ export const createVtexClient = (deps: VtexClientDeps): VtexClient => {
   ): Promise<{ data: T; headers: Headers }> => {
     const res = await doFetch(`${resolveHost(api, deps)}${path}`, { ...init, headers });
 
-    for (const raw of res.headers.getSetCookie?.() ?? []) deps.onSetCookie(raw);
-
     const body = await res.json().catch(() => undefined);
     if (!res.ok) throw new VtexApiError(res.status, api, path, body);
     return { data: body as T, headers: res.headers };

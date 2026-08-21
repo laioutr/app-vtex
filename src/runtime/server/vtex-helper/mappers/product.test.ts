@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultSellerIdOf,
   toProductComponents,
   toProductDefaultVariant,
   toProductOptionGroups,
@@ -208,5 +209,47 @@ describe('toProductDefaultVariant', () => {
 
   it('names no variant for a product with no SKUs', () => {
     expect(toProductDefaultVariant({ ...product, items: [] })).toEqual({});
+  });
+});
+
+describe('defaultSellerIdOf', () => {
+  it('takes the only seller when a SKU has one', () => {
+    expect(
+      defaultSellerIdOf({
+        sellers: [
+          { sellerId: '1', commertialOffer: { Price: 1, ListPrice: null, AvailableQuantity: 1 } },
+        ],
+      })
+    ).toBe('1');
+  });
+
+  it('takes the flagged default when a marketplace SKU has several', () => {
+    expect(
+      defaultSellerIdOf({
+        sellers: [
+          { sellerId: '2', commertialOffer: { Price: 1, ListPrice: null, AvailableQuantity: 1 } },
+          {
+            sellerId: '3',
+            sellerDefault: true,
+            commertialOffer: { Price: 1, ListPrice: null, AvailableQuantity: 1 },
+          },
+        ],
+      })
+    ).toBe('3');
+  });
+
+  it('is undefined when several sellers compete and none is flagged, because picking one picks a price', () => {
+    expect(
+      defaultSellerIdOf({
+        sellers: [
+          { sellerId: '2', commertialOffer: { Price: 1, ListPrice: null, AvailableQuantity: 1 } },
+          { sellerId: '3', commertialOffer: { Price: 1, ListPrice: null, AvailableQuantity: 1 } },
+        ],
+      })
+    ).toBeUndefined();
+  });
+
+  it('is undefined when the SKU has no sellers at all', () => {
+    expect(defaultSellerIdOf({})).toBeUndefined();
   });
 });

@@ -55,7 +55,5 @@ export interface VtexClientDeps {
   appToken: string;
   salesChannel: string;
   cookies: Record<string, string>;
-  /** Called for each upstream `Set-Cookie`, so the shopper's VTEX session survives the round trip. */
-  onSetCookie: (raw: string) => void;
   fetchImpl?: typeof fetch;
 }

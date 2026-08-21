@@ -1,4 +1,4 @@
-import type { Media, MediaImage } from '@laioutr-core/core-types/common';
+import { toCatalogImage, toCatalogImages } from './media';
 import { fromDecimal } from '../money';
 
 export interface VtexCommertialOffer {
@@ -28,6 +28,16 @@ export const defaultOfferOf = (item: {
 }): VtexCommertialOffer | undefined => {
   const sellers = item.sellers ?? [];
   return (sellers.find((seller) => seller.sellerDefault) ?? sellers[0])?.commertialOffer;
+};
+
+/**
+ * The seller an add-to-cart transacts against. A lone seller is unambiguous; several are only
+ * resolvable through VTEX's own flag, and guessing among them would decide the shopper's price.
+ */
+export const defaultSellerIdOf = (item: { sellers?: VtexSeller[] }): string | undefined => {
+  const sellers = item.sellers ?? [];
+  if (sellers.length === 1) return sellers[0]?.sellerId;
+  return sellers.find((seller) => seller.sellerDefault)?.sellerId;
 };
 
 export interface VtexItem {
@@ -66,13 +76,6 @@ export interface VtexProduct {
   allSpecifications?: string[] | null;
   [specification: string]: unknown;
 }
-
-const toMediaImage = (image: VtexImage): MediaImage => ({
-  type: 'image',
-  alt: image.imageText || image.imageLabel || undefined,
-  // VTEX resizes on its own CDN; the provider turns a requested size into the right URL.
-  sources: [{ provider: 'vtex', src: image.imageUrl }],
-});
 
 const imagesOf = (product: VtexProduct): VtexImage[] =>
   product.items.flatMap((item) => item.images ?? []);
@@ -137,13 +140,10 @@ export const toProductBase = (product: VtexProduct) => ({
   slug: product.linkText,
 });
 
-export const toProductMedia = (product: VtexProduct) => {
-  const images = imagesOf(product).map(toMediaImage);
-  return { images, media: images as Media[] };
-};
+export const toProductMedia = (product: VtexProduct) => toCatalogImages(imagesOf(product));
 
 export const toProductInfo = (product: VtexProduct) => {
-  const cover = imagesOf(product).map(toMediaImage)[0];
+  const cover = imagesOf(product).map(toCatalogImage)[0];
 
   return {
     ...(cover ? { cover } : {}),

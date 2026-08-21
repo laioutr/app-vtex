@@ -31,12 +31,16 @@ The read path, bound to canonical Orchestr tokens:
   exists and nothing reads the option, so every search runs through Legacy Search.
 - **Search suggestions** — matching categories and products for a term. Legacy Search has no
   autocomplete endpoint, so full-text search stands in for one.
+- **Cart** — the Checkout orderForm as canonical `Cart` and `CartItem`: read, add, update quantity,
+  remove, and a checkout URL bound to the orderForm. A cart is minted on the first add, not on the
+  first page view. Line items are addressed by VTEX's stable `uniqueId`; the positional index the
+  Checkout API demands is resolved per mutation, because indices shift when a line is removed.
 - **Page-indexes** — product detail, category listing and search, so the storefront has URLs.
 - **Images** — a `vtex` Nuxt Image provider that resizes on VTEX's own CDN.
 - **Studio templates** — menus and category listings offer the category tree as labelled query
   inputs, each entry carrying its full trail, so an editor picks a category instead of typing an id.
 
-Not yet built: cart, checkout, authentication, customer, orders and reviews. See
+Not yet built: checkout, authentication, customer, orders and reviews. See
 [the implementation plan](./docs/plans/2026-08-20-vtex-wrapper-plan.md) for the full intended scope
 and [docs/environment.md](./docs/environment.md) for the account state and the API traps.
 

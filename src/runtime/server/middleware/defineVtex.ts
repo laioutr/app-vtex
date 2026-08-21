@@ -1,4 +1,4 @@
-import { appendResponseHeader, parseCookies } from 'h3';
+import { parseCookies } from 'h3';
 import { defineOrchestr, useRuntimeConfig } from '#imports';
 import { name } from '../../../../package.json';
 import { resolveSalesChannel } from '../client/salesChannel';
@@ -21,6 +21,7 @@ export const defineVtex = defineOrchestr
     };
 
     const salesChannel = resolveSalesChannel(args.clientEnv.market, config);
+    const requestCookies = parseCookies(args.event);
 
     const vtexClient = createVtexClient({
       accountName: config.accountName,
@@ -28,8 +29,7 @@ export const defineVtex = defineOrchestr
       appKey: config.appKey,
       appToken: config.appToken,
       salesChannel,
-      cookies: parseCookies(args.event),
-      onSetCookie: (raw) => appendResponseHeader(args.event, 'set-cookie', raw),
+      cookies: requestCookies,
     });
 
     // Keys are namespaced: this object merges into a context shared by every installed app.

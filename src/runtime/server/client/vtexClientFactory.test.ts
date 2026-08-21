@@ -20,7 +20,6 @@ const deps = (fetchImpl: ReturnType<typeof vi.fn>, cookies: Record<string, strin
   appToken: 'TOKEN',
   salesChannel: '1',
   cookies,
-  onSetCookie: vi.fn(),
   fetchImpl: fetchImpl as unknown as typeof fetch,
 });
 
@@ -60,19 +59,6 @@ describe('createVtexClient', () => {
     expect(init.headers['X-VTEX-API-AppToken']).toBe('TOKEN');
     // A server-to-server call carrying a shopper identity would resolve a different context.
     expect(init.headers.Cookie).toBeUndefined();
-  });
-
-  it('propagates upstream Set-Cookie so the VTEX session survives', async () => {
-    const f = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      headers: { getSetCookie: () => ['vtex_segment=g2; Path=/'] },
-    });
-    const onSetCookie = vi.fn();
-    const client = createVtexClient({ ...deps(f), onSetCookie });
-    await client.publicFetch('checkout', '/api/checkout/pub/orderForm');
-    expect(onSetCookie).toHaveBeenCalledWith('vtex_segment=g2; Path=/');
   });
 
   it('throws VtexApiError carrying the status, api and path', async () => {
