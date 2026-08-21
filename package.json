@@ -37,6 +37,7 @@
     "version": "changeset version",
     "release": "pnpm run prepack && changeset publish",
     "test": "vitest run",
+    "types:vtex": "openapi-typescript https://developers.vtex.com/api/openapi/catalog-api -o src/runtime/server/types/vtexCatalogTypes.d.ts",
     "test:types": "vue-tsc --noEmit && vue-tsc -p src/runtime/server/tsconfig.json --noEmit && cd playground && vue-tsc --noEmit",
     "test:watch": "vitest watch"
   },
@@ -64,6 +65,7 @@
     "@vueuse/core": "13.1.0",
     "eslint": "^9.35.0",
     "nuxt": "3.16.2",
+    "openapi-typescript": "^7.13.0",
     "pinia": "3.0.2",
     "tsx": "^4.23.12",
     "typescript": "5.9.2",

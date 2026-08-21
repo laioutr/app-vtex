@@ -115,11 +115,38 @@ and its response schemas are fully typed down to `sellers[].commertialOffer`. It
 source than the hand-written interfaces in `vtex-helper/mappers/`, and `openapi-typescript` can
 generate from it — the same shape `app-shopware` gets from `@shopware/api-client`.
 
+`pnpm types:vtex` regenerates `src/runtime/server/types/vtexCatalogTypes.d.ts` from
+`https://developers.vtex.com/api/openapi/catalog-api`, and `types/vtexCatalog.ts` names the shapes
+worth reaching for. The instance itself publishes nothing: `/swagger.json`, `/openapi.json` and
+`/_v/openapi` all answer with the storefront's HTML, so the portal is the only source.
+
+**Not every VTEX schema is worth generating from.** Judge one by whether its component schemas are
+authored or scraped from a sample response:
+
+| spec | paths | schemas | verdict |
+| --- | --- | --- | --- |
+| Catalog API | 152 | 42 | authored — generated and committed |
+| Logistics API | 46 | 4 | authored, but mostly inline shapes |
+| Reviews and Ratings API | 4 | 2 | authored |
+| Checkout API | 37 | 8 | authored |
+| VTEX ID | 14 | 2 | authored |
+| Legacy Search API | 15 | 25 | **scraped — do not generate** |
+
+The Legacy Search schema is built from example payloads, and it shows: schemas named `Example`,
+`Example2`, `generatedObject`, and — leaked from a sample television — `ResoluO`, `TamanhoDaTela`
+and `AplicativosDeTV`. Its `Item` carries `COR` and `TAMANHO` as literal properties, which are one
+product's option axes rather than a contract. It also contradicts itself, describing the product
+with 9 properties as a named schema and 22 inline on the path. `VtexProduct` stays hand-written for
+that reason.
+
 Two caveats before trusting a generated type outright:
 
-- **The spec is behind the API.** `variations` — the SKU option axes the whole option-group mapping
-  reads — is returned by the live API and documented nowhere in the schema. A generated type needs
-  augmenting, not merely adopting.
+- **A schema can be optimistic about nulls.** `GetCategoryTree` marks `Title` and
+  `MetaTagDescription` as required strings; root categories return null for the first and every
+  category returns null for the second. `VtexCategoryNode` derives from the generated type and
+  corrects exactly those two, in the open.
+- **The Legacy Search schema disagrees with itself about `variations`** — present on the named
+  `Item` schema, absent from the inline path schema, and returned by the live API.
 - **The npm SDKs are not an option.** `@vtex/clients` peer-depends on `@vtex/api` 6.x while that
   package ships 7.4.2, and `@vtex/api` is a VTEX IO server runtime pulling koa, archiver, tar-fs,
   bluebird, graphql 14 and a `github:` dependency. It is for building IO apps, not for reading a

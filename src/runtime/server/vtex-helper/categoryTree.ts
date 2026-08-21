@@ -1,16 +1,21 @@
 import { defineCachedFunction } from '#imports';
 import type { VtexClient } from '../client/types';
+import type { VtexCatalogCategoryTree } from '../types/vtexCatalog';
 
-export interface VtexCategoryNode {
-  id: number;
-  name: string;
-  url: string;
+/**
+ * VTEX's own schema for a tree node, with two fields corrected against the live account: it marks
+ * `Title` and `MetaTagDescription` as required strings, while root categories return null for the
+ * first and every category returns null for the second. Taking the schema at its word would make
+ * the fallbacks downstream look like dead code.
+ */
+export type VtexCategoryNode = Omit<
+  VtexCatalogCategoryTree,
+  'children' | 'Title' | 'MetaTagDescription'
+> & {
   children: VtexCategoryNode[];
-  hasChildren: boolean;
-  /** Page title; VTEX leaves it null on root categories. */
   Title?: string | null;
   MetaTagDescription?: string | null;
-}
+};
 
 /**
  * The whole URL path, not its last segment: category names repeat across the tree — this catalog
