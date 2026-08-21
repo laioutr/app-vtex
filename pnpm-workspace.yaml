@@ -1,3 +1,11 @@
+shamefullyHoist: true
+strictPeerDependencies: false
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+  vue-demi: true
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - esbuild
@@ -5,3 +13,11 @@ onlyBuiltDependencies:
   - sharp
   - unrs-resolver
   - vue-demi
+minimumReleaseAgeExclude:
+  - '@laioutr-core/canonical-types'
+  - '@laioutr-core/core-types'
+  - '@laioutr-core/devtools'
+  - '@laioutr-core/frontend-core'
+  - '@laioutr-core/kit'
+  - '@laioutr-core/orchestr'
+  - '@laioutr-app/ui'
