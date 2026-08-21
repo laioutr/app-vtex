@@ -1,6 +1,6 @@
 {
   "name": "@laioutr/app-vtex",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Laioutr integration with VTEX",
   "repository": "github:laioutr/app-vtex",
   "license": "MIT",
